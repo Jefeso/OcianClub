@@ -1,0 +1,69 @@
+// Este arquivo define a estrutura do banco de dados PostgreSQL.
+// Após configurar o .env, rode: npx prisma db push
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Tabela de Usuários (Técnicos, Admins)
+model Usuario {
+  id    Int    @id @default(autoincrement())
+  email String @unique
+  senha String
+  role  Role   @default(USER)
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+// Tabela de Jogadores
+model Jogador {
+  id           Int      @id @default(autoincrement())
+  nome         String
+  posicao      String
+  categoria_id Int      // Referência simplificada à categoria
+  perfil_ml    String?  // Nulo inicialmente, preenchido pela IA depois
+  eventos      Evento[]
+}
+
+// Tabela de Partidas
+model Partida {
+  id         Int           @id @default(autoincrement())
+  adversario String
+  data       DateTime      @default(now())
+  status     StatusPartida @default(AGENDADA)
+  eventos    Evento[]
+}
+
+enum StatusPartida {
+  AGENDADA
+  AO_VIVO
+  FINALIZADA
+}
+
+// Tabela de Eventos (O coração do Event Sourcing e base para a IA)
+model Evento {
+  id         Int        @id @default(autoincrement())
+  partida_id Int
+  jogador_id Int
+  tipo       TipoEvento
+  minuto     Int
+  
+  partida    Partida    @relation(fields: [partida_id], references: [id])
+  jogador    Jogador    @relation(fields: [jogador_id], references: [id])
+}
+
+enum TipoEvento {
+  GOL
+  ASSISTENCIA
+  DESARME
+  CARTAO_AMARELO
+  CARTAO_VERMELHO
+}
