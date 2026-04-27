@@ -4,7 +4,7 @@ import { Header } from '@/src/components/Header';
 import { colors } from '@/src/theme/colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRef, useState, useEffect } from 'react';
 import PagerView from 'react-native-pager-view';
 import { HistoricoPartidas } from '@/src/components/HistoricoPartidas';
@@ -88,8 +88,8 @@ const PageContent = ({ seasonYear, resumo, carregando }: PageContentProps) => (
                   <Text style={styles.txtColocacao}>
                     {carregando ? '-' : `#${String(resumo.assistente?.colocacao ?? 0).padStart(2, '0')}`}
                   </Text>
-                  <FontAwesome6
-                    name="handshake-simple"
+                  <FontAwesome5
+                    name="handshake"
                     size={24}
                     color={colors.azulClaro}
                     style={styles.iconRight}

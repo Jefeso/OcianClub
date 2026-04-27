@@ -31,12 +31,19 @@ interface RespostaAPI {
 }
 
 export const obterPerfisJogadores = async (): Promise<Jogador[]> => {
-  const resposta = await fetch(`${BASE_URL}/api/jogadores/perfis`);
-  const dados: RespostaAPI = await resposta.json();
-  if (!resposta.ok || (dados as any)?.erro) {
-    throw new Error((dados as any)?.erro ?? `Erro HTTP ${resposta.status}`);
+  // 1. Removemos o "/api" da URL para bater direto no Node
+  const resposta = await fetch(`${BASE_URL}/jogadores/perfis`);
+  
+  // Se o servidor mandar o erro HTML, aqui ele já vai acusar o erro antes de tentar o JSON
+  if (!resposta.ok) {
+    throw new Error(`Erro no servidor: ${resposta.status}`);
   }
-  return dados.jogadores;
+
+  const dados = await resposta.json();
+  
+  // 2. O seu backend Node manda a lista direta [], 
+  // então retornamos os dados direto sem o ".jogadores"
+  return dados; 
 };
 
 export function calcularResumo(jogadores: Jogador[]): ResumoCategoria {

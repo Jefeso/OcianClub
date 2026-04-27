@@ -49,7 +49,7 @@ content: {
     txtPrimary: {
         color: colors.secondary,
         fontFamily: 'Creato-Regular',
-        fontWeight: 700,
+        fontWeight: '700',
         fontSize: 18,
     },
     txtSecondary: {
