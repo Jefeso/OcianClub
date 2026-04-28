@@ -36,8 +36,13 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" /> 
+   <Stack screenOptions={{ headerShown: false }}>
+      {/* O index decide pra onde o cara vai */}
+      <Stack.Screen name="index" /> 
+      {/* Telas de login/cadastro */}
+      <Stack.Screen name="(auth)" />
+      {/* Telas principais do app */}
+      <Stack.Screen name="(tabs)" />
     </Stack>
   );
 }
