@@ -13,10 +13,10 @@ datasource db {
 
 // Tabela de Usuários (Técnicos, Admins)
 model Usuario {
-  id    Int    @id @default(autoincrement())
-  email String @unique
-  senha String
-  role  Role   @default(USER)
+  id      Int       @id @default(autoincrement())
+  email   String    @unique
+  senha   String
+  role    Role      @default(USER)
 }
 
 enum Role {
@@ -24,23 +24,42 @@ enum Role {
   USER
 }
 
+enum TipoCategoria{
+  INICIACAO
+  BASE
+}
+
+model Categoria {
+  id          Int           @id @default(autoincrement())
+  nome        String        // Qual Sub
+  tipo        TipoCategoria // Iniciacao ou base
+  jogadores   Jogador[]     // categoria tem varios jogadores
+  partidas    Partida[]    // tem varias partidas
+}
+
 // Tabela de Jogadores
 model Jogador {
-  id           Int      @id @default(autoincrement())
-  nome         String
-  posicao      String
-  categoria_id Int      // Referência simplificada à categoria
-  perfil_ml    String?  // Nulo inicialmente, preenchido pela IA depois
-  eventos      Evento[]
+  id            Int         @id @default(autoincrement())
+  nome          String
+  cpf           String      @unique
+  dtNasc        DateTime    @db.Date
+  numCamisa     Int?        //opcional
+  posicao       String
+  perfil_ml     String?     // Nulo inicialmente, preenchido pela IA depois
+  categoria_id  Int         // aponta para o ID da tabela Categoria
+  Categoria     Categoria   @relation(fields: [categoria_id], references: [id])
+  eventos       Evento[]
 }
 
 // Tabela de Partidas
 model Partida {
-  id         Int           @id @default(autoincrement())
+  id         Int            @id @default(autoincrement())
   adversario String
-  data       DateTime      @default(now())
-  status     StatusPartida @default(AGENDADA)
+  data       DateTime       @default(now())
+  status     StatusPartida  @default(AGENDADA)
   eventos    Evento[]
+  categoria_id  Int?        // ? partidas antigas podem não ter categorias 
+  categoria     Categoria?  @relation(fields: [categoria_id], references: [id])
 }
 
 enum StatusPartida {
