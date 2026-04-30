@@ -75,11 +75,20 @@ export const styles = StyleSheet.create({
   headerContainer: {
     marginBottom: 10,
   },
+  seasonCard:{
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
   seasonTitle: {
     fontFamily: 'Creato-Bold',
     color: '#FFF',
     fontSize: 20,
-    marginBottom: 20,
+  },
+  seasonStatus:{
+    fontFamily: 'Creato-Bold',
+    color: colors.text_secondary,
+    fontSize: 14,
   },
   mainCard: {
     backgroundColor: '#1A1A1A',
@@ -96,7 +105,7 @@ export const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 8,
   },
-  playerName: {
+  teamName: {
     fontFamily: 'Creato-Bold',
     color: '#FFF',
     fontSize: 32,
@@ -111,6 +120,14 @@ export const styles = StyleSheet.create({
     fontFamily: 'Creato-Bold',
     fontSize: 36,
     color: colors.primary
+  },
+  topCard: {
+    flexDirection: 'column',
+  },
+  containerIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   rowCards: {
     flexDirection: 'row',
@@ -167,12 +184,63 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  statsIcon: {
-    marginLeft: 4
+  hr: {
+    height: 1,
+    width: '100%',
+    backgroundColor: '#2b2b2b',
+    marginBottom: 10,
   },
   rowSpaceBetween: {
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    gap: 24
+  },
+  cardHoraData:{
+    flexDirection: 'row',
+    gap: 80,
+    alignItems: 'center',
+    fontFamily: 'Creato-Bold',
+  },
+  containerDataHora:{
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 11,
+    alignItems: 'center'
+  },
+  containerLocalizacao:{
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center'
+  },
+  containerTextDataHora: {
+    flexDirection: 'column',
+    gap: 2,
+  },
+  titleDataHora: {
+    textTransform: 'uppercase',
+    color: "#b9b9b9",
+    fontFamily: 'Creato-Bold',
+    fontSize: 11,
+  },
+  subTitleDataHora: {
+    color: colors.text,
+    fontFamily: 'Creato-Bold',
+    fontSize: 16,
+  },
+  txtLocalizacao: {
+    fontFamily: 'Creato-Regular',
+    color: colors.text,
+  },
+  btnDetalhes: {
+    backgroundColor: colors.primary,
+    padding: 12,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  txtDetalhes: {
+    fontFamily: 'Creato-Bold',
+    color: 'white'
   },
   rowDefault: {
     flexDirection: 'row',

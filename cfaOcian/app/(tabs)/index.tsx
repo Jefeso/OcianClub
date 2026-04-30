@@ -5,6 +5,7 @@ import { colors } from '@/src/theme/colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import Octicons from '@expo/vector-icons/Octicons';
 import { useRef, useState, useEffect } from 'react';
 import PagerView from 'react-native-pager-view';
 import { HistoricoPartidas } from '@/src/components/HistoricoPartidas';
@@ -20,12 +21,11 @@ const LARGURA_ITEM_SELECTOR = 120;
 const ITEM_INTERVAL = LARGURA_ITEM_SELECTOR + 10;
 
 interface PageContentProps {
-  seasonYear: string;
   resumo: ResumoCategoria;
   carregando: boolean;
 }
 
-const PageContent = ({ seasonYear, resumo, carregando }: PageContentProps) => (
+const PageContent = ({ resumo, carregando }: PageContentProps) => (
   <View style={styles.pageContainer}>
     <FlatList
       data={[...Array(5)]}
@@ -35,24 +35,62 @@ const PageContent = ({ seasonYear, resumo, carregando }: PageContentProps) => (
       ListHeaderComponent={() => (
         <View style={styles.headerContainer}>
 
-          <Text style={styles.seasonTitle}>Temporada {seasonYear}</Text>
+          <View style={styles.seasonCard}>
+            <Text style={styles.seasonTitle}>PRÓXIMO JOGO</Text>
+            <TouchableOpacity activeOpacity={0.6}>
+              <Text style={styles.seasonStatus}>EM BREVE</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.mainCard}>
-            <Text style={styles.cardLabel}>ARTILHEIRO</Text>
-            <View>
-              <Text style={styles.playerName}>
-                {carregando ? '...' : (resumo.artilheiro?.nome ?? '—')}
-              </Text>
-            </View>
-            <View style={styles.rowSpaceBetween}>
-              <View>
-                <Text style={styles.playerStats}>
-                  <Text style={styles.gols}>
-                    {carregando ? '-' : (resumo.artilheiro?.gols ?? 0)}
-                  </Text>{' '}
-                  GOLS
-                </Text>
+
+            <View style={styles.containerIcon}>
+              <View style={styles.topCard}>
+                <Text style={styles.cardLabel}>Campeonato Regional</Text>
+                <View>
+                  <Text style={styles.teamName}>
+                    Santos Futsal
+                  </Text>
+                </View>
               </View>
-              <MaterialCommunityIcons name="soccer" size={34} color={colors.azulClaro} />
+              <View>
+                {/* OPCIONAL ICONE SE É JOGO EM CASA OU FORA */}
+                <FontAwesome5 name="bus" size={22} color={colors.azulClaro} />
+                {/* <MaterialCommunityIcons name="home-outline" size={26} color={colors.azulClaro} /> */}
+              </View>
+            </View>
+
+            <View style={styles.hr}/>
+
+            <View style={styles.rowSpaceBetween}>
+              <View style={styles.cardHoraData}>
+
+                <View style={styles.containerDataHora}>
+                  <FontAwesome5 name="calendar" size={18} color={colors.text} />
+                  <View style={styles.containerTextDataHora}>
+                    <Text style={styles.titleDataHora}>Data</Text>
+                    <Text style={styles.subTitleDataHora}>21 Mar</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.containerDataHora}>
+                  <FontAwesome5 name="clock" size={18} color={colors.text} />
+                  <View style={styles.containerTextDataHora}>
+                    <Text style={styles.titleDataHora}>Horário</Text>
+                    <Text style={styles.subTitleDataHora}>19:30</Text>
+                  </View>
+                </View>
+
+              </View>
+
+              <View style={styles.containerLocalizacao}>
+                <Octicons name="location" size={20} color={colors.azulClaro} />
+                <Text style={styles.txtLocalizacao}>Ginásio Falcão, Praia Grande</Text>
+              </View>
+
+              <TouchableOpacity style={styles.btnDetalhes} activeOpacity={0.8}>
+                <Text style={styles.txtDetalhes}>VER DETALHES DA PARTIDA</Text>
+              </TouchableOpacity>
+
             </View>
           </View>
 
@@ -213,7 +251,6 @@ export default function Home() {
         {CATEGORIAS.map((cat, i) => (
           <View key={cat.id}>
             <PageContent
-              seasonYear="2026"
               resumo={resumoPorCategoria[i]}
               carregando={carregando}
             />
