@@ -61,20 +61,29 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="partida/partida"
+        name="jogos/jogos"
         options={{
-          title: 'Partida',
+          title: 'Jogos',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="soccer" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
+        name="placar/placar"
+        options={{
+          title: 'Placar',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="trophy-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="estatisticas/estatisticas"
         options={{
-          title: 'Estatísticas',
+          title: 'Scout',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="chart-box-outline" size={size} color={color} />
+            <MaterialCommunityIcons name="radar" size={size} color={color} />
           ),
         }}
       />
@@ -82,9 +91,7 @@ export default function TabsLayout() {
         name="perfil/perfil"
         options={{
           title: 'Perfil',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="account" size={size} color={color} />
-          ),
+          href: null
         }}
       />
         <Tabs.Screen

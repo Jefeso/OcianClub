@@ -52,11 +52,38 @@ app.post('/auth/login', async (req, res) => {
 // 2. CADASTROS E BUSCAS
 // ==========================================
 
+app.post('/times', async (req, res) => {
+  const { nome, escudo } = req.body;
+  try {
+    const time = await prisma.time.create({ data: { nome, escudo } });
+    res.status(201).json(time);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao criar time' });
+  }
+});
+
+app.get('/times', async (req, res) => {
+  try {
+    const times = await prisma.time.findMany({ orderBy: { nome: 'asc' } });
+    res.json(times);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar times' });
+  }
+});
+
+// CORREÇÃO: Adicionado campos obrigatórios do schema (cpf e dtNasc)
 app.post('/jogadores', async (req, res) => {
-    const { nome, posicao, categoria_id } = req.body;
+    const { nome, posicao, categoria_id, cpf, dtNasc } = req.body;
     try {
         const jogador = await prisma.jogador.create({
-            data: { nome, posicao, categoria_id }
+            data: { 
+              nome, 
+              posicao, 
+              categoria_id,
+              // Fallback para string aleatória e data atual caso o front não envie
+              cpf: cpf || Math.random().toString().slice(2, 13), 
+              dtNasc: dtNasc ? new Date(dtNasc) : new Date() 
+            }
         });
         res.status(201).json(jogador);
     } catch (error) {
@@ -73,16 +100,13 @@ app.get('/jogadores', async (req, res) => {
     }
 });
 
-// NOVA ROTA: PERFIS E ESTATÍSTICAS PARA O FRONTEND
 app.get('/jogadores/perfis', async (req, res) => {
     try {
-        // Busca jogadores e seus eventos
         const jogadores = await prisma.jogador.findMany({
             include: { eventos: true }
         });
 
         const formatados = jogadores.map(j => {
-            // Conta os eventos por tipo para este jogador específico
             const stats = j.eventos.reduce((acc: any, ev) => {
                 acc[ev.tipo] = (acc[ev.tipo] || 0) + 1;
                 return acc;
@@ -93,8 +117,7 @@ app.get('/jogadores/perfis', async (req, res) => {
                 nome: j.nome,
                 posicao: j.posicao,
                 perfil_ml: j.perfil_ml || 'Versátil',
-                foto: j.foto || null,
-                time: "CFA Ocian",
+                time: "CFA Ocian", // CORREÇÃO: Campo 'foto' removido
                 jogos_disputados: [...new Set(j.eventos.map(e => e.partida_id))].length,
                 gols: stats['GOL'] || 0,
                 assistencias: stats['ASSISTENCIA'] || 0,
@@ -112,25 +135,70 @@ app.get('/jogadores/perfis', async (req, res) => {
     }
 });
 
+app.post('/competicoes', async (req, res) => {
+  const { nome, ano } = req.body;
+  try {
+    const competicao = await prisma.competicao.create({ data: { nome, ano } });
+    res.status(201).json(competicao);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao criar competição' });
+  }
+});
+
+app.get('/competicoes', async (req, res) => {
+  try {
+    const competicoes = await prisma.competicao.findMany({ orderBy: { nome: 'asc' } });
+    res.json(competicoes);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar competições' });
+  }
+});
+
 app.post('/partidas', async (req, res) => {
-    const { adversario } = req.body;
-    try {
-        const partida = await prisma.partida.create({
-            data: { adversario, status: 'AGENDADA' }
-        });
-        res.status(201).json(partida);
-    } catch (error) {
-        res.status(500).json({ error: 'Erro ao criar partida' });
-    }
+  const { mandante_id, visitante_id, data, horario, local, emCasa, categoria_id, competicao_id } = req.body;
+  try {
+    const partida = await prisma.partida.create({
+      data: {
+        mandante_id,
+        visitante_id,
+        data: data ? new Date(data) : new Date(),
+        horario,
+        local,
+        emCasa,
+        categoria_id,
+        competicao_id,
+        status: 'AGENDADA',
+      },
+      include: { mandante: true, visitante: true, categoria: true, competicao: true },
+    });
+    res.status(201).json(partida);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao criar partida' });
+  }
 });
 
 app.get('/partidas', async (req, res) => {
-    try {
-        const partidas = await prisma.partida.findMany({ orderBy: { data: 'desc' } });
-        res.json(partidas);
-    } catch (error) {
-        res.status(500).json({ error: 'Erro ao buscar partidas' });
+  const { categoria_id, mes, status } = req.query;
+  try {
+    const where: any = {};
+    if (categoria_id) where.categoria_id = Number(categoria_id);
+    if (status) where.status = status;
+    if (mes) {
+      const ano = new Date().getFullYear();
+      where.data = {
+        gte: new Date(`${ano}-${String(mes).padStart(2, '0')}-01`),
+        lt:  new Date(`${ano}-${String(Number(mes) + 1).padStart(2, '0')}-01`),
+      };
     }
+    const partidas = await prisma.partida.findMany({
+      where,
+      orderBy: { data: 'asc' },
+      include: { mandante: true, visitante: true, categoria: true, eventos: true },
+    });
+    res.json(partidas);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar partidas' });
+  }
 });
 
 // ==========================================
@@ -155,16 +223,17 @@ app.get('/jogadores/:id/estatisticas', async (req, res) => {
 
 app.post('/partidas/:id/eventos', async (req, res) => {
     const partidaId = parseInt(req.params.id);
-    const { jogador_id, tipo, minuto } = req.body;
+    // CORREÇÃO: time_id inserido conforme schema novo
+    const { jogador_id, time_id, tipo, minuto } = req.body;
     try {
         const evento = await prisma.evento.create({
-            data: { partida_id: partidaId, jogador_id, tipo, minuto },
+            data: { partida_id: partidaId, jogador_id, time_id, tipo, minuto },
             include: { jogador: true }
         });
 
         io.emit('evento_partida', {
             tipo: evento.tipo,
-            jogador: evento.jogador.nome,
+            jogador: evento.jogador?.nome || 'Adversário',
             minuto: evento.minuto,
             partida_id: partidaId
         });
@@ -173,6 +242,20 @@ app.post('/partidas/:id/eventos', async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: 'Erro ao salvar evento' });
     }
+});
+
+app.patch('/partidas/:id/placar', async (req, res) => {
+  const { gols_mandante, gols_visitante } = req.body;
+  try {
+    const partida = await prisma.partida.update({
+      where: { id: Number(req.params.id) },
+      data: { gols_mandante, gols_visitante },
+    });
+    io.emit('placar_atualizado', partida);
+    res.json(partida);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao atualizar placar' });
+  }
 });
 
 app.patch('/partidas/:id/status', async (req, res) => {
@@ -205,6 +288,9 @@ async function processarMachineLearning() {
 
     const mapJogadores = new Map<number, any>();
     for (const ev of eventos) {
+        // Ignora eventos que não são do Ocian (onde jogador_id é null)
+        if (ev.jogador_id === null) continue;
+
         if (!mapJogadores.has(ev.jogador_id)) {
             mapJogadores.set(ev.jogador_id, { jogador_id: ev.jogador_id, GOL: 0, ASSISTENCIA: 0, DESARME: 0, CARTAO_AMARELO: 0, CARTAO_VERMELHO: 0 });
         }

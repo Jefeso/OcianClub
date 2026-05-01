@@ -1,4 +1,6 @@
 import { PrismaClient, TipoCategoria, Role } from "@prisma/client";
+import bcrypt from "bcrypt";
+
 const prisma = new PrismaClient();
 
 async function main() {
@@ -11,12 +13,12 @@ async function main() {
             where: { nome: nome } 
         });
         if (!categoriaExiste){
-        await prisma.categoria.create({
-            data: { 
-                nome: nome,
-                tipo: TipoCategoria.INICIACAO,
-            },
-        });
+            await prisma.categoria.create({
+                data: { 
+                    nome: nome,
+                    tipo: TipoCategoria.INICIACAO,
+                },
+            });
             console.log(`Categoria ${nome} Criada!`);
         } else {
             console.log(`Categoria ${nome} já existe, pulando...`);
@@ -30,19 +32,19 @@ async function main() {
             where: { nome:nome } 
         });
         if (!categoriaExiste) {
-        await prisma.categoria.create({
-            data: {
-                nome: nome,
-                tipo: TipoCategoria.BASE,
-            },
-        });
+            await prisma.categoria.create({
+                data: {
+                    nome: nome,
+                    tipo: TipoCategoria.BASE,
+                },
+            });
             console.log(`Categoria ${nome} Criada!`);
         } else {
             console.log(`Categoria ${nome} já existe, pulando...`);
         }
     }
 
-    const bcrypt = require('bcrypt');
+    // A mágica do bcrypt agora funciona sem erros de require
     const hashSenha = await bcrypt.hash('adm123', 10);
 
     await prisma.usuario.upsert({
@@ -55,7 +57,7 @@ async function main() {
         },
     });
 
-    console.log('Cataorias e Admin criados');
+    console.log('Categorias e Admin criados');
 }
 
 main()

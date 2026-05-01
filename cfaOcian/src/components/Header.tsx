@@ -3,6 +3,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '@/src/theme/colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router'; // 👈 Importação para navegar!
 
 interface HeaderProps {
   title: string;
@@ -10,10 +11,12 @@ interface HeaderProps {
   showLogo?: boolean;
   icon?: keyof typeof MaterialCommunityIcons.glyphMap;
   onPressIcon?: () => void;
+  showProfile?: boolean;
 }
 
-export function Header({ title, iconName, showLogo, onPressIcon, icon }: HeaderProps) {
+export function Header({ title, iconName, showLogo, onPressIcon, icon, showProfile }: HeaderProps) {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 20 }]}>
@@ -40,11 +43,23 @@ export function Header({ title, iconName, showLogo, onPressIcon, icon }: HeaderP
         <Text style={styles.title}>{title}</Text>
       </View>
 
-      {iconName && (
-        <TouchableOpacity style={styles.actionButton} activeOpacity={0.7} onPress={onPressIcon}>
-          <MaterialCommunityIcons name={iconName} size={24} color="#FFF" />
-        </TouchableOpacity>
-      )}
+      <View style={styles.rightContent}>
+        {iconName && (
+          <TouchableOpacity style={styles.actionButton} activeOpacity={0.7} onPress={onPressIcon}>
+            <MaterialCommunityIcons name={iconName} size={24} color="#FFF" />
+          </TouchableOpacity>
+        )}
+
+        {showProfile && (
+          <TouchableOpacity 
+            style={styles.profileButton} 
+            activeOpacity={0.7} 
+            onPress={() => router.push('perfil/perfil')}
+          >
+            <MaterialCommunityIcons name="account" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 }
@@ -81,11 +96,26 @@ const styles = StyleSheet.create({
     color: '#FFF',
     textTransform: 'uppercase',
   },
+  rightContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20, 
+  },
   actionButton: {
     width: 45,
     height: 45,
     backgroundColor: '#333',
     borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileButton: {
+    width: 45,
+    height: 45,
+    backgroundColor: 'rgba(0, 159, 255, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },

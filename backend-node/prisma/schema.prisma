@@ -11,12 +11,12 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// Tabela de Usuários (Técnicos, Admins)
+// ── USUÁRIOS ──────────────────────────────────────────────
 model Usuario {
-  id      Int       @id @default(autoincrement())
-  email   String    @unique
+  id      Int    @id @default(autoincrement())
+  email   String @unique
   senha   String
-  role    Role      @default(USER)
+  role    Role   @default(USER)
 }
 
 enum Role {
@@ -24,42 +24,88 @@ enum Role {
   USER
 }
 
-enum TipoCategoria{
+// ── CATEGORIAS (Os Subs) ──────────────────────────────────
+model Categoria {
+  id        Int           @id @default(autoincrement())
+  nome      String 
+  tipo      TipoCategoria
+  
+  jogadores Jogador[]
+  partidas  Partida[]
+}
+
+enum TipoCategoria {
   INICIACAO
   BASE
 }
 
-model Categoria {
-  id          Int           @id @default(autoincrement())
-  nome        String        // Qual Sub
-  tipo        TipoCategoria // Iniciacao ou base
-  jogadores   Jogador[]     // categoria tem varios jogadores
-  partidas    Partida[]    // tem varias partidas
+// ── COMPETIÇÕES (Novo! Para o Dropdown) ───────────────────
+model Competicao {
+  id        Int       @id @default(autoincrement())
+  nome      String
+  ano       Int 
+  
+  partidas  Partida[]
 }
 
-// Tabela de Jogadores
+// ── TIMES (Para Mandante e Visitante) ─────────────────────
+model Time {
+  id                 Int       @id @default(autoincrement())
+  nome               String
+  escudo             String?
+  
+  partidas_mandante  Partida[] @relation("Mandante")
+  partidas_visitante Partida[] @relation("Visitante")
+  eventos            Evento[]
+}
+
+// ── JOGADORES (O Elenco do Ocian) ─────────────────────────
 model Jogador {
-  id            Int         @id @default(autoincrement())
-  nome          String
-  cpf           String      @unique
-  dtNasc        DateTime    @db.Date
-  numCamisa     Int?        //opcional
-  posicao       String
-  perfil_ml     String?     // Nulo inicialmente, preenchido pela IA depois
-  categoria_id  Int         // aponta para o ID da tabela Categoria
-  Categoria     Categoria   @relation(fields: [categoria_id], references: [id])
-  eventos       Evento[]
+  id           Int       @id @default(autoincrement())
+  nome         String
+  cpf          String    @unique
+  dtNasc       DateTime  @db.Date
+  numCamisa    Int?      
+  posicao      String
+  perfil_ml    String?
+  
+  categoria_id Int 
+  categoria    Categoria @relation(fields: [categoria_id], references: [id])
+  
+  eventos      Evento[]
 }
 
-// Tabela de Partidas
+// ── PARTIDAS ──────────────────────────────────────────────
 model Partida {
-  id         Int            @id @default(autoincrement())
-  adversario String
-  data       DateTime       @default(now())
-  status     StatusPartida  @default(AGENDADA)
-  eventos    Evento[]
-  categoria_id  Int?        // ? partidas antigas podem não ter categorias 
-  categoria     Categoria?  @relation(fields: [categoria_id], references: [id])
+  id             Int           @id @default(autoincrement())
+  
+  // Relação com os Times
+  mandante_id    Int
+  mandante       Time          @relation("Mandante", fields: [mandante_id], references: [id])
+  
+  visitante_id   Int
+  visitante      Time          @relation("Visitante", fields: [visitante_id], references: [id])
+  
+  // Placar direto (para leitura rápida)
+  gols_mandante  Int           @default(0)
+  gols_visitante Int           @default(0)
+  
+  // Dados do Jogo
+  data           DateTime      @default(now())
+  horario        String?       // "19:30"
+  local          String?
+  emCasa         Boolean       @default(true)
+  status         StatusPartida @default(AGENDADA)
+  
+  // Relação com a Categoria (Sub) e Competição
+  categoria_id   Int?
+  categoria      Categoria?    @relation(fields: [categoria_id], references: [id])
+  
+  competicao_id  Int?
+  competicao     Competicao?   @relation(fields: [competicao_id], references: [id])
+  
+  // Detalhes minuto a minuto
+  eventos        Evento[]
 }
 
 enum StatusPartida {
@@ -68,16 +114,22 @@ enum StatusPartida {
   FINALIZADA
 }
 
-// Tabela de Eventos (O coração do Event Sourcing e base para a IA)
+// ── EVENTOS (O Scout / Event Sourcing para a IA) ──────────
 model Evento {
   id         Int        @id @default(autoincrement())
   partida_id Int
-  jogador_id Int
+  partida    Partida    @relation(fields: [partida_id], references: [id])
+  
   tipo       TipoEvento
   minuto     Int
+
+  // Qual time fez a ação? (Obrigatório)
+  time_id    Int
+  time       Time       @relation(fields: [time_id], references: [id])
   
-  partida    Partida    @relation(fields: [partida_id], references: [id])
-  jogador    Jogador    @relation(fields: [jogador_id], references: [id])
+  // Qual jogador do Ocian fez a ação? (Opcional, pois pode ser um evento do adversário)
+  jogador_id Int?
+  jogador    Jogador?   @relation(fields: [jogador_id], references: [id])
 }
 
 enum TipoEvento {
@@ -86,4 +138,5 @@ enum TipoEvento {
   DESARME
   CARTAO_AMARELO
   CARTAO_VERMELHO
+  FALTA
 }
