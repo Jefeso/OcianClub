@@ -162,7 +162,7 @@ export default function Home() {
 
   return (
     <View style={styles.container}>
-      <Header title="CFA OCIAN" iconName="bell" showLogo={true} showProfile={true} />
+      <Header title="CFA OCIAN" btnNotificacao="bell" showLogo={true} showProfile={true} />
 
       <CarrosselSubs
         indexAtual={activeIndex}

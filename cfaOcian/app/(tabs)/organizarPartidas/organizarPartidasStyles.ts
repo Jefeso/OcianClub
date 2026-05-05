@@ -10,9 +10,7 @@ export const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: MARGEM,
-    paddingTop: 16,
   },
-
   sectionLabel: {
     fontFamily: 'Creato-Bold',
     color: colors.azulClaro,

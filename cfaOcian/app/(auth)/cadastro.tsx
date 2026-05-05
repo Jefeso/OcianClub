@@ -12,13 +12,14 @@ import { styles } from './cadastroStyles'
 export default function Cadastro() {
   const router = useRouter();
   
+  const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [carregando, setCarregando] = useState(false);
 
   const handleCadastro = async () => {
-    if (!email || !senha || !confirmarSenha) {
+    if (!nome || !email || !senha || !confirmarSenha) {
       Alert.alert('Atenção', 'Preencha todos os campos!');
       return;
     }
@@ -39,7 +40,7 @@ export default function Cadastro() {
       const resposta = await fetch(`${BASE_URL}/auth/registrar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, senha, role: 'USER' })
+        body: JSON.stringify({ email, senha, nome, role: 'USER' })
       });
 
       const dados = await resposta.json();
@@ -73,6 +74,14 @@ export default function Cadastro() {
         <Text style={styles.subtitulo}>Junte-se ao CFA Ocian</Text>
 
         <View style={styles.form}>
+          <TextInput
+            style={styles.input}
+            placeholder="Seu nome"
+            placeholderTextColor="#888"
+            value={nome}
+            onChangeText={setNome}
+          />
+
           <TextInput
             style={styles.input}
             placeholder="E-mail"

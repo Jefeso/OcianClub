@@ -15,6 +15,11 @@ const CATEGORIAS = [
   { id: 4, nome: 'SUB 18' },
 ];
 
+interface OrganizarPartidasProps {
+  onFechar: () => void;
+  noModal?: boolean; 
+}
+
 interface Time { id: number; nome: string; escudo: string | null; }
 interface Competicao { id: number; nome: string; ano: number; }
 
@@ -31,7 +36,7 @@ function EscudoTime({ escudo, nome, size = 40 }: { escudo: string | null; nome: 
   );
 }
 
-export default function OrganizarPartidas() {
+export default function OrganizarPartidas({ onFechar, noModal  }: OrganizarPartidasProps) {
   const router = useRouter();
 
   const [competicoes, setCompeticoes] = useState<Competicao[]>([]);
@@ -115,7 +120,7 @@ export default function OrganizarPartidas() {
         categoria_id: categoriaId,
         competicao_id: competicaoSelecionada?.id, // Envia o ID da competição
       });
-      router.back();
+      onFechar()
     } catch (e) {
       console.error(e);
     } finally {
@@ -127,7 +132,7 @@ export default function OrganizarPartidas() {
 
   return (
     <View style={styles.container}>
-      <Header title="ORGANIZAR PARTIDA" showLogo={false} showProfile={false} iconName="arrow-left" />
+      <Header title="ORGANIZAR PARTIDA" showLogo={false} showProfile={false} btnVoltar="arrow-left" onBtnVoltar={onFechar} semSafeArea={noModal} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 

@@ -71,7 +71,7 @@ export default function Placar() {
 
   return (
     <View style={styles.container}>
-      <Header title="PLACAR" icon="trophy-outline" showLogo={false} showProfile={true} iconName='bell'/>
+      <Header title="PLACAR" icon="trophy-outline" showLogo={false} showProfile={true} btnNotificacao='bell'/>
 
       <CarrosselSubs
         indexAtual={activeIndex}

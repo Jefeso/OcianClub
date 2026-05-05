@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { fetchPartidas } from '@/src/services/api';
+import OrganizarPartidas from '../organizarPartidas/organizarPartidas';
 
 const FILTROS_MES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -113,9 +114,11 @@ export default function Jogos() {
   return `${p.gols_mandante}  ×  ${p.gols_visitante}`;
 };
 
+const [modalOrganizar, setModalOrganizar] = useState(false);
+
   return (
     <View style={styles.container}>
-      <Header title="JOGOS" iconName="bell" showLogo={false} icon="soccer" showProfile={true} />
+      <Header title="JOGOS" btnNotificacao="bell" showLogo={false} icon="soccer" showProfile={true} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -239,34 +242,27 @@ export default function Jogos() {
       </ScrollView>
 
       {isAdmin && (
-        <TouchableOpacity activeOpacity={0.8} style={styles.fab} onPress={() => router.push('/(tabs)/organizarPartidas/organizarPartidas')}>
+        <TouchableOpacity activeOpacity={0.8} style={styles.fab} onPress={() => setModalOrganizar(true)}>
           <LinearGradient colors={['#0E78FF', '#2C88FE']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.fabGradient}>
             <MaterialCommunityIcons name="plus" size={32} color="#FFF" />
           </LinearGradient>
         </TouchableOpacity>
       )}
 
-      <Modal visible={modalMesVisible} transparent animationType="fade">
-        <Pressable style={styles.modalOverlay} onPress={() => setModalMesVisible(false)}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Selecione o Mês</Text>
-              <MaterialCommunityIcons name="close" size={24} color="#FFF" onPress={() => setModalMesVisible(false)} />
-            </View>
-            <View style={styles.monthGrid}>
-              {FILTROS_MES.map((mes, i) => (
-                <TouchableOpacity
-                  key={mes}
-                  style={[styles.monthGridItem, mesAtivo === i + 1 && styles.monthGridItemActive]}
-                  onPress={() => { setMesAtivo(i + 1); setModalMesVisible(false); }}
-                >
-                  <Text style={[styles.monthGridText, mesAtivo === i + 1 && styles.monthGridTextActive]}>{mes}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </Pressable>
+       <Modal
+        visible={modalOrganizar}
+        transparent={false}   // tela cheia
+        animationType="slide"
+        onRequestClose={() => setModalOrganizar(false)}
+      >
+        <OrganizarPartidas
+        noModal={true}
+        onFechar={() => {
+        setModalOrganizar(false);
+        carregarPartidas();
+        }} />
       </Modal>
+
     </View>
   );
 }

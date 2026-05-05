@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
-import { 
-  View, Text, TextInput, TouchableOpacity, 
-  StyleSheet, ActivityIndicator, Alert 
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { BASE_URL } from '@/src/services/api';
-import { colors } from '@/src/theme/colors';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { styles } from './loginStyles'
 
@@ -36,7 +32,9 @@ export default function Login() {
       }
       // 2. Salva o Token de forma segura no celular
       await SecureStore.setItemAsync('userToken', dados.token);
-      await SecureStore.setItemAsync('userRole', dados.role); // Pra saber se é ADMIN
+      await SecureStore.setItemAsync('userRole', dados.role);
+      await SecureStore.setItemAsync('userName', dados.nome); 
+      await SecureStore.setItemAsync('userCriadoEm', dados.criadoEm);
 
       // 3. Joga o usuário para dentro do app e impede de voltar para o login
       router.replace('/(tabs)');

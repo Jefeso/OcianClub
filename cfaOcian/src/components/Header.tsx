@@ -3,24 +3,36 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '@/src/theme/colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router'; // 👈 Importação para navegar!
+import { useRouter } from 'expo-router';
 
 interface HeaderProps {
   title: string;
-  iconName?: keyof typeof MaterialCommunityIcons.glyphMap;
+  btnVoltar?: keyof typeof MaterialCommunityIcons.glyphMap;
+  btnNotificacao?: keyof typeof MaterialCommunityIcons.glyphMap;
   showLogo?: boolean;
   icon?: keyof typeof MaterialCommunityIcons.glyphMap;
   onPressIcon?: () => void;
   showProfile?: boolean;
+  onBtnVoltar?: () => void; 
+  semSafeArea?: boolean; 
 }
 
-export function Header({ title, iconName, showLogo, onPressIcon, icon, showProfile }: HeaderProps) {
+export function Header({ title, btnVoltar, btnNotificacao, showLogo, onPressIcon, icon, showProfile, onBtnVoltar, semSafeArea }: HeaderProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 20 }]}>
+    <View style={[styles.container, { paddingTop: semSafeArea ? 20 : insets.top + 20 }]}>
       <View style={styles.leftContent}>
+        {btnVoltar && (
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            activeOpacity={0.7} 
+            onPress={() => onBtnVoltar ? onBtnVoltar() : router.back()}
+          >
+            <MaterialCommunityIcons name={btnVoltar} size={24} color="#FFF" />
+          </TouchableOpacity>
+        )}
         {showLogo && (
           <LinearGradient
             colors={[colors.primary, colors.secondary]}
@@ -44,12 +56,11 @@ export function Header({ title, iconName, showLogo, onPressIcon, icon, showProfi
       </View>
 
       <View style={styles.rightContent}>
-        {iconName && (
+        {btnNotificacao && (
           <TouchableOpacity style={styles.actionButton} activeOpacity={0.7} onPress={onPressIcon}>
-            <MaterialCommunityIcons name={iconName} size={24} color="#FFF" />
+            <MaterialCommunityIcons name={btnNotificacao} size={24} color="#FFF" />
           </TouchableOpacity>
         )}
-
         {showProfile && (
           <TouchableOpacity 
             style={styles.profileButton} 

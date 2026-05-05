@@ -24,11 +24,11 @@ const PYTHON_AI_URL = process.env.PYTHON_AI_URL || 'http://localhost:8000';
 // ==========================================
 
 app.post('/auth/registrar', async (req, res) => {
-    const { email, senha, role } = req.body;
+    const { email, senha, nome, role } = req.body;
     try {
         const hashSenha = await bcrypt.hash(senha, 10);
         const usuario = await prisma.usuario.create({
-            data: { email, senha: hashSenha, role }
+          data: { email, senha: hashSenha, nome, role }
         });
         res.status(201).json({ mensagem: "Usuário criado com sucesso", id: usuario.id });
     } catch (error) {
@@ -45,7 +45,7 @@ app.post('/auth/login', async (req, res) => {
     if (!senhaValida) return res.status(401).json({ error: 'Senha incorreta' });
 
     const token = jwt.sign({ id: usuario.id, role: usuario.role }, JWT_SECRET, { expiresIn: '8h' });
-    res.json({ token, role: usuario.role });
+    res.json({ token, role: usuario.role, nome: usuario.nome, criadoEm: usuario.criadoEm });
 });
 
 // ==========================================

@@ -241,7 +241,7 @@ export default function Estatisticas() {
 
   return (
     <View style={styles.container}>
-      <Header title="ESTATÍSTICAS" icon="chart-box-outline" iconName="bell"  />
+      <Header title="ESTATÍSTICAS" icon="chart-box-outline" btnNotificacao="bell"  />
 
       {/* ── Seletor de categoria (igual ao index.tsx) ── */}
       <View style={styles.carrosselWrapper}>
