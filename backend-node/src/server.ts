@@ -45,7 +45,48 @@ app.post('/auth/login', async (req, res) => {
     if (!senhaValida) return res.status(401).json({ error: 'Senha incorreta' });
 
     const token = jwt.sign({ id: usuario.id, role: usuario.role }, JWT_SECRET, { expiresIn: '8h' });
-    res.json({ token, role: usuario.role, nome: usuario.nome, criadoEm: usuario.criadoEm });
+    res.json({ token, role: usuario.role, nome: usuario.nome, criadoEm: usuario.criadoEm, email: usuario.email });
+});
+
+app.patch('/usuarios/me', async (req, res) => {
+  const { nome, email, senha } = req.body;
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Token não enviado' });
+
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: number };
+
+    const data: any = { nome, email };
+    if (senha && senha.length >= 6) {
+      data.senha = await bcrypt.hash(senha, 10);
+    }
+
+    const usuario = await prisma.usuario.update({
+      where: { id: decoded.id },
+      data,
+    });
+
+    res.json({ nome: usuario.nome, email: usuario.email });
+  } catch (error) {
+    res.status(401).json({ error: 'Token inválido' });
+  }
+});
+
+app.delete('/usuarios/me', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Token não enviado' });
+
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: number };
+
+    await prisma.usuario.delete({ where: { id: decoded.id } });
+
+    res.json({ mensagem: 'Conta excluída com sucesso' });
+  } catch (error) {
+    res.status(401).json({ error: 'Token inválido ou usuário não encontrado' });
+  }
 });
 
 // ==========================================
@@ -71,7 +112,50 @@ app.get('/times', async (req, res) => {
   }
 });
 
-// CORREÇÃO: Adicionado campos obrigatórios do schema (cpf e dtNasc)
+app.patch('/times/:id', async (req, res) => {
+  const { nome, escudo } = req.body;
+  try {
+    const time = await prisma.time.update({
+      where: { id: Number(req.params.id) },
+      data: { nome, escudo },
+    });
+    res.json(time);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao atualizar time' });
+  }
+});
+
+app.delete('/times/:id', async (req, res) => {
+  try {
+    await prisma.time.delete({ where: { id: Number(req.params.id) } });
+    res.json({ mensagem: 'Time excluído' });
+  } catch (error) {
+    res.status(409).json({ error: 'Time possui partidas vinculadas e não pode ser excluído.' });
+  }
+});
+
+app.patch('/competicoes/:id', async (req, res) => {
+  const { nome, ano } = req.body;
+  try {
+    const competicao = await prisma.competicao.update({
+      where: { id: Number(req.params.id) },
+      data: { nome, ano },
+    });
+    res.json(competicao);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao atualizar competição' });
+  }
+});
+
+app.delete('/competicoes/:id', async (req, res) => {
+  try {
+    await prisma.competicao.delete({ where: { id: Number(req.params.id) } });
+    res.json({ mensagem: 'Competição excluída' });
+  } catch (error) {
+    res.status(409).json({ error: 'Competição possui partidas vinculadas.' });
+  }
+});
+
 app.post('/jogadores', async (req, res) => {
     const { nome, posicao, categoria_id, cpf, dtNasc } = req.body;
     try {

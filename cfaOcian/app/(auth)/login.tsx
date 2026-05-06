@@ -35,6 +35,7 @@ export default function Login() {
       await SecureStore.setItemAsync('userRole', dados.role);
       await SecureStore.setItemAsync('userName', dados.nome); 
       await SecureStore.setItemAsync('userCriadoEm', dados.criadoEm);
+      await SecureStore.setItemAsync('userEmail', dados.email); 
 
       // 3. Joga o usuário para dentro do app e impede de voltar para o login
       router.replace('/(tabs)');

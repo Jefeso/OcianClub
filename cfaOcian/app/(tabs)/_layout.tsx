@@ -101,6 +101,20 @@ export default function TabsLayout() {
           title: 'Detalhes',
         }}
       />
+        <Tabs.Screen
+        name="perfil/dadosPessoais/dadosPessoais"
+        options={{
+          href: null,
+          title: 'dadosPessoais',
+        }}
+      />
+        <Tabs.Screen
+        name="perfil/equipes/equipes"
+        options={{
+          href: null,
+          title: 'equipes',
+        }}
+      />
     </Tabs>
   );
 }

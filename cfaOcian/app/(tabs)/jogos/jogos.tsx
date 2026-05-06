@@ -251,7 +251,7 @@ const [modalOrganizar, setModalOrganizar] = useState(false);
 
        <Modal
         visible={modalOrganizar}
-        transparent={false}   // tela cheia
+        transparent={false}
         animationType="slide"
         onRequestClose={() => setModalOrganizar(false)}
       >
