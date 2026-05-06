@@ -52,6 +52,7 @@ async function main() {
         update: {},
         create: {
             email: 'adm@adm',
+            nome: 'Administrador',
             senha: hashSenha,
             role: Role.ADMIN,
         },

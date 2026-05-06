@@ -13,12 +13,12 @@ datasource db {
 
 // ── USUÁRIOS ──────────────────────────────────────────────
 model Usuario {
-  id      Int    @id @default(autoincrement())
+  id      Int         @id @default(autoincrement())
   nome  String
-  email   String @unique
-  senha   String
-  criadoEm  DateTime @default(now())
-  role    Role   @default(USER)
+  email   String      @unique
+  senha   String  
+  criadoEm  DateTime  @default(now())
+  role    Role        @default(USER)
 }
 
 enum Role {
@@ -41,7 +41,7 @@ enum TipoCategoria {
   BASE
 }
 
-// ── COMPETIÇÕES (Novo! Para o Dropdown) ───────────────────
+// ── COMPETIÇÕES (Dropdown) ───────────────────
 model Competicao {
   id        Int       @id @default(autoincrement())
   nome      String

@@ -19,9 +19,7 @@ app.use(express.json());
 const JWT_SECRET = process.env.JWT_SECRET || 'segredo_super_seguro_ocian';
 const PYTHON_AI_URL = process.env.PYTHON_AI_URL || 'http://localhost:8000';
 
-// ==========================================
 // 1. AUTENTICAÇÃO E USUÁRIOS
-// ==========================================
 
 app.post('/auth/registrar', async (req, res) => {
     const { email, senha, nome, role } = req.body;
@@ -48,9 +46,7 @@ app.post('/auth/login', async (req, res) => {
     res.json({ token, role: usuario.role, nome: usuario.nome, criadoEm: usuario.criadoEm });
 });
 
-// ==========================================
 // 2. CADASTROS E BUSCAS
-// ==========================================
 
 app.post('/times', async (req, res) => {
   const { nome, escudo } = req.body;
