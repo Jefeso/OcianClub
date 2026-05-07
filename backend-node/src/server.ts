@@ -152,23 +152,80 @@ app.delete('/competicoes/:id', async (req, res) => {
   }
 });
 
-app.post('/jogadores', async (req, res) => {
-    const { nome, posicao, categoria_id, cpf, dtNasc } = req.body;
-    try {
-        const jogador = await prisma.jogador.create({
-            data: { 
-              nome, 
-              posicao, 
-              categoria_id,
-              // Fallback para string aleatória e data atual caso o front não envie
-              cpf: cpf || Math.random().toString().slice(2, 13), 
-              dtNasc: dtNasc ? new Date(dtNasc) : new Date() 
-            }
-        });
-        res.status(201).json(jogador);
-    } catch (error) {
-        res.status(500).json({ error: 'Erro ao criar jogador' });
+app.post('/jogadores', async (req, res) =>{
+  const { nome, cpf, dtNasc, posicao, numCamisa} =req.body;
+
+  if (!nome || !cpf || !dtNasc){
+    return res.status(400).json({ error: 'Nome, CPF e data de nascimento são obrigatórios' });
+  }
+
+  try {
+    const cpfExistente = await prisma.jogador.findUnique({ where: { cpf} });
+    if (cpfExistente) {
+      return res.status(409).json({
+        error: 'Este CPF já está cadastrado'
+      })
     }
+
+    const anoNasc = new Date(dtNasc).getFullYear();
+    const anoAtual = new Date().getFullYear();
+    const idadeNoAno = anoAtual - anoNasc;
+
+    const regrasCategorias = [
+      {limite: 7, nome: "sub-7"},
+      {limite: 8, nome: "sub-8"},
+      {limite: 9, nome: "sub-9"},
+      {limite: 10, nome: "sub-10"},
+      {limite: 12, nome: "sub-12"},
+      {limite: 14, nome: "sub-14"},
+      {limite: 16, nome: "sub-16"},
+      {limite: 18, nome: "sub-18"},
+    ];
+
+    const categoriaAdequada = regrasCategorias.find(regra => idadeNoAno <= regra.limite);
+    const nomeCategoria = categoriaAdequada ? categoriaAdequada.nome : "sub-18";
+    
+    const categoria = await prisma.categoria.findFirst({
+      where: {nome: nomeCategoria}
+    });
+
+    if (!categoria){
+      return res.status(404).json({ error: `Categoria ${nomeCategoria} não encontrada`});
+    }
+
+    if (numCamisa){
+      const camisaEmUso = await prisma.jogador.findFirst({
+        where: {
+          categoria_id: categoria.id,
+          numCamisa: Number(numCamisa)
+        }
+      });
+
+      if (camisaEmUso){
+        return res.status(409).json({
+          error: `A camisa ${numCamisa} já está sendo usada pelo jogador ${camisaEmUso.nome} na categoria ${nomeCategoria}.`
+        });
+      }
+    }
+
+    const jogador = await prisma.jogador.create({
+      data: {
+        nome,
+        cpf,
+        dtNasc: new Date(dtNasc),
+        posicao: posicao ||  "Não definida",
+        numCamisa: numCamisa ? Number(numCamisa) : null,
+        categoria_id: categoria.id,
+        perfil_ml: ""
+      }
+    });
+
+    return res.status(201).json(jogador);
+    
+  } catch (error) {
+    console.error("Erro ao cadastrar Jogador: ", error);
+    res.status(500).json({ error: 'Erro ao criar jogador' }); 
+  }
 });
 
 app.get('/jogadores', async (req, res) => {
@@ -197,7 +254,7 @@ app.get('/jogadores/perfis', async (req, res) => {
                 nome: j.nome,
                 posicao: j.posicao,
                 perfil_ml: j.perfil_ml || 'Versátil',
-                time: "CFA Ocian", // CORREÇÃO: Campo 'foto' removido
+                time: "CFA Ocian",
                 jogos_disputados: [...new Set(j.eventos.map(e => e.partida_id))].length,
                 gols: stats['GOL'] || 0,
                 assistencias: stats['ASSISTENCIA'] || 0,
@@ -281,9 +338,9 @@ app.get('/partidas', async (req, res) => {
   }
 });
 
-// ==========================================
+
 // 3. O JOGO E EVENTOS
-// ==========================================
+
 
 app.get('/jogadores/:id/estatisticas', async (req, res) => {
     const jogadorId = parseInt(req.params.id);
@@ -355,9 +412,9 @@ app.patch('/partidas/:id/status', async (req, res) => {
     }
 });
 
-// ==========================================
+
 // 4. INTEGRAÇÃO COM IA
-// ==========================================
+
 
 async function processarMachineLearning() {
     console.log("Coletando dados para IA...");
