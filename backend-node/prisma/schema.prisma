@@ -43,11 +43,12 @@ enum TipoCategoria {
 
 // ── COMPETIÇÕES (Dropdown) ───────────────────
 model Competicao {
-  id        Int       @id @default(autoincrement())
-  nome      String
-  ano       Int 
+  id                    Int       @id @default(autoincrement())
+  nome                  String
+  ano                   Int 
   
-  partidas  Partida[]
+  jogadores_inscritos   CompeticaoJogador[]
+  partidas              Partida[]
 }
 
 // ── TIMES (Para Mandante e Visitante) ─────────────────────
@@ -63,18 +64,20 @@ model Time {
 
 // ── JOGADORES (O Elenco do Ocian) ─────────────────────────
 model Jogador {
-  id           Int       @id @default(autoincrement())
-  nome         String
-  cpf          String    @unique
-  dtNasc       DateTime  @db.Date
-  numCamisa    Int?      
-  posicao      String
-  perfil_ml    String?
+  id            Int       @id @default(autoincrement())
+  nome          String
+  cpf           String    @unique
+  dtNasc        DateTime  @db.Date
+  numCamisa     Int?      
+  posicao       String
+  perfil_ml     String?
   
-  categoria_id Int 
-  categoria    Categoria @relation(fields: [categoria_id], references: [id])
+  categoria_id  Int 
+  categoria     Categoria @relation(fields: [categoria_id], references: [id])
   
-  eventos      Evento[]
+  competicoes   CompeticaoJogador[]
+  escalacoes    EscalacaoPartida[]
+  eventos       Evento[]
 }
 
 // ── PARTIDAS ──────────────────────────────────────────────
@@ -82,32 +85,33 @@ model Partida {
   id             Int           @id @default(autoincrement())
   
   // Relação com os Times
-  mandante_id    Int
-  mandante       Time          @relation("Mandante", fields: [mandante_id], references: [id])
-  
-  visitante_id   Int
-  visitante      Time          @relation("Visitante", fields: [visitante_id], references: [id])
+  mandante_id             Int
+  mandante                Time          @relation("Mandante", fields: [mandante_id], references: [id])
+
+  visitante_id            Int
+  visitante               Time          @relation("Visitante", fields: [visitante_id], references: [id])
   
   // Placar direto (para leitura rápida)
-  gols_mandante  Int           @default(0)
-  gols_visitante Int           @default(0)
-  
-  // Dados do Jogo
-  data           DateTime      @default(now())
-  horario        String?       // "19:30"
-  local          String?
-  emCasa         Boolean       @default(true)
-  status         StatusPartida @default(AGENDADA)
+  gols_mandante           Int                 @default(0)
+  gols_visitante          Int                 @default(0)
+
+  // Dados do Jogo      
+  data                    DateTime            @default(now())
+  horario                 String?             // "19:30"
+  local                   String?     
+  emCasa                  Boolean             @default(true)
+  status                  StatusPartida       @default(AGENDADA)
   
   // Relação com a Categoria (Sub) e Competição
-  categoria_id   Int?
-  categoria      Categoria?    @relation(fields: [categoria_id], references: [id])
-  
-  competicao_id  Int?
-  competicao     Competicao?   @relation(fields: [competicao_id], references: [id])
+  categoria_id            Int?
+  categoria               Categoria?          @relation(fields: [categoria_id], references: [id])
+
+  competicao_id           Int?      
+  competicao              Competicao?         @relation(fields: [competicao_id], references: [id])
   
   // Detalhes minuto a minuto
-  eventos        Evento[]
+  jogadores_escalonados   EscalacaoPartida[]
+  eventos                 Evento[]
 }
 
 enum StatusPartida {
@@ -118,20 +122,20 @@ enum StatusPartida {
 
 // ── EVENTOS (O Scout / Event Sourcing para a IA) ──────────
 model Evento {
-  id         Int        @id @default(autoincrement())
-  partida_id Int
-  partida    Partida    @relation(fields: [partida_id], references: [id])
+  id          Int        @id @default(autoincrement())
+  partida_id  Int
+  partida     Partida    @relation(fields: [partida_id], references: [id])
   
-  tipo       TipoEvento
-  minuto     Int
+  tipo        TipoEvento
+  minuto      Int
 
   // Qual time fez a ação? (Obrigatório)
-  time_id    Int
-  time       Time       @relation(fields: [time_id], references: [id])
+  time_id     Int
+  time        Time       @relation(fields: [time_id], references: [id])
   
   // Qual jogador do Ocian fez a ação? (Opcional, pois pode ser um evento do adversário)
-  jogador_id Int?
-  jogador    Jogador?   @relation(fields: [jogador_id], references: [id])
+  jogador_id  Int?
+  jogador     Jogador?   @relation(fields: [jogador_id], references: [id])
 }
 
 enum TipoEvento {
@@ -141,4 +145,30 @@ enum TipoEvento {
   CARTAO_AMARELO
   CARTAO_VERMELHO
   FALTA
+}
+
+// -- INSCRIÇÃO NO CAMPEONATO
+
+model CompeticaoJogador{
+  id            Int         @id @default(autoincrement())
+  competicao_id Int       
+  competicao    Competicao  @relation(fields: [competicao_id], references: [id])
+  jogador_id    Int
+  jogador       Jogador     @relation(fields: [jogador_id], references: [id])
+
+  @@unique([competicao_id, jogador_id])
+}
+
+// --- ESCALAÇAO DA PARTIDA - Jogo
+
+model EscalacaoPartida {
+  id            Int         @default(autoincrement())
+  partida_id    Int         
+  partida       Partida     @relation(fields: [partida_id], references: [ids])
+  jogador_id    Int
+  jogador       Jogador     @relation(fiels: [jogador_id], references: [id])
+
+  numCamisa     Int
+  titular       BOolean     @default(false)  
+  @@uniq([partida_id, jogador_id])
 }

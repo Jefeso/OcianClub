@@ -183,8 +183,13 @@ app.post('/jogadores', async (req, res) =>{
     ];
 
     const categoriaAdequada = regrasCategorias.find(regra => idadeNoAno <= regra.limite);
-    const nomeCategoria = categoriaAdequada ? categoriaAdequada.nome : "sub-18";
-    
+
+    if (!categoriaAdequada) {
+        return res.status(403).json({ error: 'Idade não permitida. O clube não registra atletas acima de 18 anos.' });
+    }
+
+    const nomeCategoria = categoriaAdequada.nome;
+
     const categoria = await prisma.categoria.findFirst({
       where: {nome: nomeCategoria}
     });

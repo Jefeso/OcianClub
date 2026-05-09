@@ -263,6 +263,52 @@ const [modalOrganizar, setModalOrganizar] = useState(false);
         }} />
       </Modal>
 
+      <Modal
+        visible={modalMesVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setModalMesVisible(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setModalMesVisible(false)}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Selecione o Mês</Text>
+              <TouchableOpacity onPress={() => setModalMesVisible(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.monthGrid}>
+              {FILTROS_MES.map((mes, index) => {
+                const numMes = index + 1;
+                return (
+                  <TouchableOpacity
+                    key={mes}
+                    style={[
+                      styles.monthGridItem,
+                      mesAtivo === numMes && styles.monthGridItemActive
+                    ]}
+                    onPress={() => {
+                      setMesAtivo(numMes);
+                      setModalMesVisible(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.monthGridText,
+                        mesAtivo === numMes && styles.monthGridTextActive
+                      ]}
+                    >
+                      {mes.substring(0, 3).toUpperCase()} {/* Ex: JAN, FEV, MAR */}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
     </View>
   );
 }
