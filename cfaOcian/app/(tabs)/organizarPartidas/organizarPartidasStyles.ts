@@ -40,6 +40,35 @@ export const styles = StyleSheet.create({
     fontSize: 15,
   },
 
+  // ── Toggle Iniciação / Base ──────────────────────────────
+  tipoSwitchContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 10,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    marginBottom: 12,
+  },
+  tipoSwitchBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  tipoSwitchBtnAtivo: {
+    backgroundColor: colors.primary + '22',
+  },
+  tipoSwitchTxt: {
+    fontFamily: 'Creato-Bold',
+    color: colors.text_secondary,
+    fontSize: 12,
+    letterSpacing: 0.6,
+  },
+  tipoSwitchTxtAtivo: {
+    color: colors.primary,
+  },
+
   // ── Pills categoria ───────────────────────────────────────
   pillRow: {
     gap: 10,
@@ -161,26 +190,6 @@ export const styles = StyleSheet.create({
     color: colors.azulClaro,
     fontSize: 12,
     letterSpacing: 0.8,
-  },
-
-  // ── Mapa ─────────────────────────────────────────────────
-  mapaPlaceholder: {
-    marginTop: 14,
-    height: 160,
-    backgroundColor: '#111',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  mapaLabel: {
-    fontFamily: 'Creato-Bold',
-    color: '#333',
-    fontSize: 11,
-    letterSpacing: 1.2,
   },
 
   // ── Salvar ───────────────────────────────────────────────

@@ -87,7 +87,12 @@ async function main() {
 
             let mandante = await prisma.time.findFirst({ where: { nome: jogo.mandanteStr } });
             if (!mandante) {
-                mandante = await prisma.time.create({ data: { nome: jogo.mandanteStr } });
+                mandante = await prisma.time.create({ 
+                data: { 
+                    nome: jogo.mandanteStr, 
+                    categorias: { connect: [{ id: categoria.id }] } 
+                } 
+              });
             }
 
             let visitante = await prisma.time.findFirst({ where: { nome: jogo.visitanteStr } });

@@ -10,9 +10,10 @@ export const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: MARGEM,
-    paddingTop: 16,
+    paddingTop: 8,
   },
 
+  // ── SEGMENTED CONTROL TOPO (3 ABAS) ──
   segmentedControl: {
     flexDirection: 'row',
     marginHorizontal: MARGEM,
@@ -30,25 +31,141 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
   },
   segmentBtnAtivo: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.cinza,
   },
   segmentTxt: {
     fontFamily: 'Creato-Bold',
     color: colors.text_secondary,
-    fontSize: 12,
+    fontSize: 11,
     letterSpacing: 0.8,
   },
   segmentTxtAtivo: {
     color: colors.text,
   },
 
+  // ── TOGGLE INICIAÇÃO / BASE (SÓ OCIAN) ──
+  tipoSwitchContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 10,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    marginBottom: 16,
+  },
+  tipoSwitchBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  tipoSwitchBtnAtivo: {
+    backgroundColor: colors.primary + '22',
+  },
+  tipoSwitchTxt: {
+    fontFamily: 'Creato-Bold',
+    color: colors.text_secondary,
+    fontSize: 12,
+    letterSpacing: 0.6,
+  },
+  tipoSwitchTxtAtivo: {
+    color: colors.primary,
+  },
+
+  // ── BREADCRUMB E TÍTULOS (ADVERSÁRIOS) ──
+  btnVoltarCategorias: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 4,
+  },
+  txtVoltarCategorias: {
+    fontFamily: 'Creato-Bold',
+    color: colors.azulClaro,
+    fontSize: 12,
+    letterSpacing: 0.8,
+  },
+  sectionLabel: {
+    fontFamily: 'Creato-Bold',
+    color: colors.text_secondary,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    marginBottom: 12,
+    marginTop: 4,
+  },
+
+  // ── PILLS (BOTÕES PARA SELECIONAR SUBS NO FORMULÁRIO) ──
+  pill: {
+    backgroundColor: '#1A1A1A',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pillActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  pillText: {
+    fontFamily: 'Creato-Bold',
+    color: colors.text_secondary,
+    fontSize: 11,
+  },
+  pillTextActive: {
+    color: '#FFF',
+  },
+
+  // ── GRID DE CATEGORIAS (USADO NO OCIAN E ADVERSÁRIOS) ──
+  gridCategorias: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  cardCategoriaOcian: {
+    width: '48%',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    gap: 10,
+  },
+  iconCircleOcian: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catOcianNome: {
+    fontFamily: 'Creato-Bold',
+    color: colors.text,
+    fontSize: 16,
+  },
+  catOcianBadgeTxt: {
+    fontFamily: 'Creato-Regular',
+    color: colors.text_secondary,
+    fontSize: 11,
+    backgroundColor: '#2a2a2a',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+
+  // ── LISTA DE TIMES E CAMPEONATOS ──
   buscaContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1A1A1A',
     borderRadius: 12,
-    marginHorizontal: MARGEM,
-    marginBottom: 12,
+    marginBottom: 16,
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 10,
@@ -61,8 +178,7 @@ export const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
   },
-
-  card: {
+  cardLista: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -79,32 +195,12 @@ export const styles = StyleSheet.create({
     gap: 14,
     flex: 1,
   },
-  escudo: {
-    width: 44,
-    height: 44,
-    resizeMode: 'contain',
-    borderRadius: 8,
-  },
-  escudoPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    backgroundColor: '#2a2a2a',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  escudoIniciais: {
-    fontFamily: 'Creato-Bold',
-    color: colors.azulClaro,
-    fontSize: 14,
-  },
   cardNome: {
     fontFamily: 'Creato-Bold',
     color: colors.text,
     fontSize: 15,
-    flexShrink: 1,
   },
-  cardAno: {
+  cardSub: {
     fontFamily: 'Creato-Regular',
     color: colors.text_secondary,
     fontSize: 12,
@@ -125,7 +221,27 @@ export const styles = StyleSheet.create({
   btnAcaoDanger: {
     backgroundColor: colors.vermelho + '18',
   },
+  escudoLista: {
+    width: 44,
+    height: 44,
+    resizeMode: 'contain',
+    borderRadius: 8,
+  },
+  escudoPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#2a2a2a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  escudoIniciais: {
+    fontFamily: 'Creato-Bold',
+    color: colors.azulClaro,
+    fontSize: 14,
+  },
 
+  // ── FAB E EMPTY STATES ──
   fab: {
     position: 'absolute',
     bottom: 24,
@@ -137,12 +253,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
   },
-
   emptyContainer: {
     alignItems: 'center',
     paddingTop: 60,
@@ -150,7 +261,7 @@ export const styles = StyleSheet.create({
   },
   emptyText: {
     fontFamily: 'Creato-Bold',
-    color: '#333',
+    color: '#444',
     fontSize: 14,
     letterSpacing: 0.5,
   },
@@ -171,38 +282,7 @@ export const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  skeletonCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1A1A1A',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
-    gap: 14,
-  },
-  skeletonEscudo: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    backgroundColor: '#2a2a2a',
-  },
-  skeletonTextoContainer: {
-    gap: 8,
-    flex: 1,
-  },
-  skeletonTitulo: {
-    height: 14,
-    borderRadius: 6,
-    backgroundColor: '#2a2a2a',
-    width: '60%',
-  },
-  skeletonSubtitulo: {
-    height: 10,
-    borderRadius: 6,
-    backgroundColor: '#222',
-    width: '40%',
-  },
-
+  // ── MODAIS (CRIAR, EXCLUIR, ELENCO) ──
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.75)',
@@ -213,15 +293,14 @@ export const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
-    gap: 14,
+    gap: 16,
     borderWidth: 1,
     borderColor: '#2a2a2a',
-    alignItems: 'center',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     width: '100%',
   },
   modalTitulo: {
@@ -233,7 +312,7 @@ export const styles = StyleSheet.create({
     fontFamily: 'Creato-Regular',
     color: colors.text_secondary,
     fontSize: 13,
-    textAlign: 'center',
+    marginTop: 2,
   },
   modalBotoes: {
     flexDirection: 'row',
@@ -267,6 +346,44 @@ export const styles = StyleSheet.create({
     fontSize: 13,
   },
 
+  // ── LISTA DE JOGADORES (ELENCO OCIAN) ──
+  cardJogador: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#222',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333',
+    gap: 12,
+  },
+  jogadorCamisa: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#111',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  jogadorCamisaTxt: {
+    fontFamily: 'Creato-Bold',
+    color: colors.text,
+    fontSize: 13,
+  },
+  jogadorNome: {
+    fontFamily: 'Creato-Bold',
+    color: colors.text,
+    fontSize: 14,
+  },
+  jogadorPosicao: {
+    fontFamily: 'Creato-Regular',
+    color: colors.text_secondary,
+    fontSize: 12,
+  },
+
+  // ── FORMULÁRIOS ──
   escudoPicker: {
     width: 90,
     height: 90,
@@ -291,7 +408,6 @@ export const styles = StyleSheet.create({
     color: colors.text_secondary,
     fontSize: 11,
   },
-
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',

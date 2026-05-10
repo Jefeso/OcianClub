@@ -89,35 +89,56 @@ app.delete('/usuarios/me', async (req, res) => {
 
 // 2. CADASTROS E BUSCAS
 
+// Substitua as rotas POST, PATCH e GET de /times por estas:
+
 app.post('/times', async (req, res) => {
-  const { nome, escudo } = req.body;
+  const { nome, escudo, categorias_ids } = req.body;
   try {
-    const time = await prisma.time.create({ data: { nome, escudo } });
+    const time = await prisma.time.create({ 
+      data: { 
+        nome, 
+        escudo,
+        categorias: categorias_ids ? {
+          connect: categorias_ids.map((id: number) => ({ id }))
+        } : undefined
+      },
+      include: { categorias: true }
+    });
     res.status(201).json(time);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao criar time' });
   }
 });
 
-app.get('/times', async (req, res) => {
-  try {
-    const times = await prisma.time.findMany({ orderBy: { nome: 'asc' } });
-    res.json(times);
-  } catch (error) {
-    res.status(500).json({ error: 'Erro ao buscar times' });
-  }
-});
-
 app.patch('/times/:id', async (req, res) => {
-  const { nome, escudo } = req.body;
+  const { nome, escudo, categorias_ids } = req.body;
   try {
     const time = await prisma.time.update({
       where: { id: Number(req.params.id) },
-      data: { nome, escudo },
+      data: { 
+        nome, 
+        escudo,
+        categorias: categorias_ids ? {
+          set: categorias_ids.map((id: number) => ({ id })) // Atualiza os subs marcados
+        } : undefined
+      },
+      include: { categorias: true }
     });
     res.json(time);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao atualizar time' });
+  }
+});
+
+app.get('/times', async (req, res) => {
+  try {
+    const times = await prisma.time.findMany({ 
+      orderBy: { nome: 'asc' },
+      include: { categorias: true } // <-- Traz os subs pro frontend saber!
+    });
+    res.json(times);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar times' });
   }
 });
 
@@ -316,6 +337,15 @@ app.post('/partidas', async (req, res) => {
     res.status(201).json(partida);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao criar partida' });
+  }
+});
+
+app.get('/categorias', async (req, res) => {
+  try {
+    const categorias = await prisma.categoria.findMany({ orderBy: { nome: 'asc' } });
+    res.json(categorias);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar categorias' });
   }
 });
 

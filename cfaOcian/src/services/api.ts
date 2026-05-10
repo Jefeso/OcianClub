@@ -12,7 +12,7 @@ export async function fetchTimes() {
   return res.json();
 }
 
-export async function criarTime(dados: { nome: string; escudo?: string }) {
+export async function criarTime(dados: { nome: string; escudo?: string; categorias_ids?: number[] }) {
   const res = await fetch(`${BASE_URL}/times`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -22,7 +22,7 @@ export async function criarTime(dados: { nome: string; escudo?: string }) {
   return res.json();
 }
 
-export async function atualizarTime(id: number, dados: { nome: string; escudo?: string }) {
+export async function atualizarTime(id: number, dados: { nome: string; escudo?: string; categorias_ids?: number[] }) {
   const res = await fetch(`${BASE_URL}/times/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -32,12 +32,26 @@ export async function atualizarTime(id: number, dados: { nome: string; escudo?: 
   return res.json();
 }
 
+export async function fetchCategorias() {
+  const res = await fetch(`${BASE_URL}/categorias`);
+  if (!res.ok) throw new Error('Erro ao buscar categorias');
+  return res.json();
+}
+
 export async function deletarTime(id: number) {
   const res = await fetch(`${BASE_URL}/times/${id}`, { method: 'DELETE' });
   if (!res.ok) {
     const dados = await res.json();
     throw new Error(dados.error ?? 'Erro ao excluir time');
   }
+  return res.json();
+}
+
+
+
+export async function fetchJogadores() {
+  const res = await fetch(`${BASE_URL}/jogadores`);
+  if (!res.ok) throw new Error('Erro ao buscar jogadores');
   return res.json();
 }
 

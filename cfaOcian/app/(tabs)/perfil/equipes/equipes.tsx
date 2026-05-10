@@ -1,5 +1,5 @@
-import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, Pressable, Image, ActivityIndicator, Alert } from 'react-native';
-import { useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, Pressable, Image, ActivityIndicator, Alert, FlatList } from 'react-native';
+import React, { useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { styles } from './equipesStyles';
 import { Header } from '@/src/components/Header';
@@ -7,68 +7,76 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '@/src/theme/colors';
 import * as ImagePicker from 'expo-image-picker';
 import {
-  fetchTimes, fetchCompeticoes,
+  fetchTimes, fetchCompeticoes, fetchCategorias, fetchJogadores, fetchPartidas,
   criarTime, atualizarTime, deletarTime,
   criarCompeticao, atualizarCompeticao, deletarCompeticao,
 } from '@/src/services/api';
 
-interface Time { id: number; nome: string; escudo: string | null; }
+interface Categoria { id: number; nome: string; tipo: 'INICIACAO' | 'BASE'; }
+interface Time { id: number; nome: string; escudo: string | null; categorias: Categoria[]; }
+interface Partida { id: number; categoria_id: number | null; mandante: Time; visitante: Time; }
 interface Competicao { id: number; nome: string; ano: number; }
-interface EquipesProp { onFechar: () => void; noModal?: boolean; }
+interface Jogador { id: number; nome: string; posicao: string; numCamisa: number | null; categoria_id: number; }
+interface EquipesProps { onFechar: () => void; noModal?: boolean; }
 
-function EmptyState({ icone, mensagem, onAction, labelAction }: {
-  icone: keyof typeof MaterialCommunityIcons.glyphMap;
-  mensagem: string;
-  onAction: () => void;
-  labelAction: string;
-}) {
+const NOME_CLUBE = 'OCIAN';
+
+const ORDEM_SUBS: Record<string, number> = {
+  'SUB 7': 1, 'SUB-7': 1, 'SUB 8': 2, 'SUB-8': 2, 'SUB 9': 3, 'SUB-9': 3,
+  'SUB 10': 4, 'SUB-10': 4, 'SUB 12': 5, 'SUB-12': 5, 'SUB 14': 6, 'SUB-14': 6,
+  'SUB 16': 7, 'SUB-16': 7, 'SUB 18': 8, 'SUB-18': 8,
+};
+
+function EmptyState({ icone, mensagem, onAction, labelAction }: any) {
   return (
     <View style={styles.emptyContainer}>
       <MaterialCommunityIcons name={icone} size={56} color="#2a2a2a" />
       <Text style={styles.emptyText}>{mensagem}</Text>
-      <TouchableOpacity style={styles.emptyBtn} onPress={onAction} activeOpacity={0.8}>
-        <MaterialCommunityIcons name="plus" size={16} color={colors.text} />
-        <Text style={styles.emptyBtnText}>{labelAction}</Text>
-      </TouchableOpacity>
+      {onAction && (
+        <TouchableOpacity style={styles.emptyBtn} onPress={onAction} activeOpacity={0.8}>
+          <MaterialCommunityIcons name="plus" size={16} color={colors.text} />
+          <Text style={styles.emptyBtnText}>{labelAction}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
-function SkeletonCard() {
-  return (
-    <View style={styles.skeletonCard}>
-      <View style={styles.skeletonEscudo} />
-      <View style={styles.skeletonTextoContainer}>
-        <View style={styles.skeletonTitulo} />
-        <View style={styles.skeletonSubtitulo} />
-      </View>
-    </View>
-  );
-}
-
-export default function Equipes({ onFechar, noModal }: EquipesProp) {
-  const [abaAtiva, setAbaAtiva] = useState<'times' | 'campeonatos'>('times');
-  const [times, setTimes] = useState<Time[]>([]);
-  const [competicoes, setCompeticoes] = useState<Competicao[]>([]);
-  const [carregando, setCarregando] = useState(true);
+export default function Equipes({ onFechar, noModal }: EquipesProps) {
+  const [abaAtiva, setAbaAtiva] = useState<'ocian' | 'adversarios' | 'campeonatos'>('ocian');
+  const [tipoOcian, setTipoOcian] = useState<'INICIACAO' | 'BASE'>('INICIACAO');
+  const [subSelecionadoId, setSubSelecionadoId] = useState<number | null>(null);
   const [busca, setBusca] = useState('');
+  
+  const [times, setTimes] = useState<Time[]>([]);
+  const [partidas, setPartidas] = useState<Partida[]>([]);
+  const [competicoes, setCompeticoes] = useState<Competicao[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [jogadores, setJogadores] = useState<Jogador[]>([]);
+  const [carregando, setCarregando] = useState(true);
 
   const [modalForm, setModalForm] = useState(false);
   const [modalConfirmar, setModalConfirmar] = useState(false);
-  const [itemSelecionado, setItemSelecionado] = useState<Time | Competicao | null>(null);
+  const [modalElenco, setModalElenco] = useState(false);
+  
+  // 🔥 CORREÇÃO DO TYPESCRIPT: Categoria adicionada aqui
+  const [itemSelecionado, setItemSelecionado] = useState<Time | Competicao | Categoria | null>(null);
+  
   const [salvando, setSalvando] = useState(false);
-
   const [nomeForm, setNomeForm] = useState('');
   const [anoForm, setAnoForm] = useState('');
   const [escudoUri, setEscudoUri] = useState<string | null>(null);
   const [escudoUrl, setEscudoUrl] = useState<string | null>(null);
+  const [categoriasForm, setCategoriasForm] = useState<number[]>([]);
 
   const carregarDados = useCallback(async () => {
     setCarregando(true);
     try {
-      const [t, c] = await Promise.all([fetchTimes(), fetchCompeticoes()]);
-      setTimes(t);
-      setCompeticoes(c);
+      const [t, c, cat, jog, p] = await Promise.all([
+        fetchTimes(), fetchCompeticoes(), fetchCategorias(), fetchJogadores(), fetchPartidas()
+      ]);
+      setTimes(t); setCompeticoes(c); setJogadores(jog); setPartidas(p);
+      setCategorias(cat.sort((a: Categoria, b: Categoria) => (ORDEM_SUBS[a.nome.toUpperCase()] ?? 99) - (ORDEM_SUBS[b.nome.toUpperCase()] ?? 99)));
     } catch (e) {
       console.error(e);
     } finally {
@@ -78,287 +86,315 @@ export default function Equipes({ onFechar, noModal }: EquipesProp) {
 
   useFocusEffect(useCallback(() => { carregarDados(); }, [carregarDados]));
 
+  const isOcian = (nome: string) => nome.toUpperCase().includes(NOME_CLUBE);
+  
+  const categoriasOcian = categorias.filter(c => c.tipo === tipoOcian);
+  const competicoesFiltradas = competicoes.filter(c => c.nome.toLowerCase().includes(busca.toLowerCase()));
+
+  // A MÁGICA: Deduzir os adversários lendo as Partidas + Cadastros Manuais
+  const getAdversariosPorSub = (catId: number) => {
+    const mapaTimes = new Map<number, Time>();
+
+    // 1. Pega os adversários dos jogos que o script do seu parceiro subiu
+    partidas.forEach(p => {
+      if (p.categoria_id === catId) {
+        if (p.mandante && !isOcian(p.mandante.nome)) mapaTimes.set(p.mandante.id, p.mandante);
+        if (p.visitante && !isOcian(p.visitante.nome)) mapaTimes.set(p.visitante.id, p.visitante);
+      }
+    });
+
+    // 2. Pega os times que você cadastrar manualmente no app
+    times.forEach(t => {
+      if (!isOcian(t.nome) && t.categorias?.some(c => c.id === catId)) {
+        mapaTimes.set(t.id, t);
+      }
+    });
+
+    return Array.from(mapaTimes.values());
+  };
+
+  // Funções de CRUD
   const abrirFormNovo = () => {
-    setItemSelecionado(null);
-    setNomeForm('');
-    setAnoForm(String(new Date().getFullYear()));
-    setEscudoUri(null);
-    setEscudoUrl(null);
-    setModalForm(true);
+    setItemSelecionado(null); setNomeForm(''); setAnoForm(String(new Date().getFullYear()));
+    setEscudoUri(null); setEscudoUrl(null); setCategoriasForm(subSelecionadoId ? [subSelecionadoId] : []); setModalForm(true);
   };
 
   const abrirFormEdicao = (item: Time | Competicao) => {
-    setItemSelecionado(item);
-    setNomeForm(item.nome);
+    setItemSelecionado(item); setNomeForm(item.nome);
     if ('ano' in item) setAnoForm(String(item.ano));
-    if ('escudo' in item) { setEscudoUrl(item.escudo); setEscudoUri(null); }
+    if ('escudo' in item) { 
+      setEscudoUrl(item.escudo); setEscudoUri(null); 
+      setCategoriasForm(('categorias' in item) ? item.categorias?.map((c: Categoria) => c.id) || [] : []); 
+    }
     setModalForm(true);
   };
 
-  const abrirConfirmarExclusao = (item: Time | Competicao) => {
-    setItemSelecionado(item);
-    setModalConfirmar(true);
-  };
-
   const escolherImagem = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.8 });
     if (!result.canceled) setEscudoUri(result.assets[0].uri);
   };
 
+  const toggleCategoriaForm = (id: number) => {
+    if (categoriasForm.includes(id)) setCategoriasForm(categoriasForm.filter(catId => catId !== id));
+    else setCategoriasForm([...categoriasForm, id]);
+  };
+
   const salvar = async () => {
-    if (!nomeForm.trim()) {
-      Alert.alert('Atenção', 'O nome não pode ser vazio.');
-      return;
-    }
+    if (!nomeForm.trim()) return Alert.alert('Atenção', 'O nome não pode ser vazio.');
+    if (abaAtiva === 'adversarios' && categoriasForm.length === 0) return Alert.alert('Atenção', 'Selecione pelo menos um Sub.');
+
     setSalvando(true);
     try {
-      if (abaAtiva === 'times') {
-        const dados = { nome: nomeForm, escudo: escudoUrl ?? undefined };
-        if (itemSelecionado) {
-          await atualizarTime(itemSelecionado.id, dados);
-        } else {
-          await criarTime(dados);
-        }
+      if (abaAtiva === 'adversarios') {
+        const dados = { nome: nomeForm, escudo: escudoUrl ?? undefined, categorias_ids: categoriasForm };
+        if (itemSelecionado && 'escudo' in itemSelecionado) await atualizarTime(itemSelecionado.id, dados); 
+        else await criarTime(dados);
       } else {
         const dados = { nome: nomeForm, ano: Number(anoForm) || new Date().getFullYear() };
-        if (itemSelecionado) {
-          await atualizarCompeticao(itemSelecionado.id, dados);
-        } else {
-          await criarCompeticao(dados);
-        }
+        if (itemSelecionado && 'ano' in itemSelecionado) await atualizarCompeticao(itemSelecionado.id, dados); 
+        else await criarCompeticao(dados);
       }
-      setModalForm(false);
-      carregarDados();
+      setModalForm(false); carregarDados();
     } catch (err: any) {
       Alert.alert('Erro', err.message);
-    } finally {
-      setSalvando(false);
-    }
+    } finally { setSalvando(false); }
   };
 
   const excluir = async () => {
     if (!itemSelecionado) return;
     try {
-      if (abaAtiva === 'times') {
-        await deletarTime(itemSelecionado.id);
-      } else {
-        await deletarCompeticao(itemSelecionado.id);
-      }
-      setModalConfirmar(false);
-      carregarDados();
+      if (abaAtiva === 'adversarios') await deletarTime(itemSelecionado.id); else await deletarCompeticao(itemSelecionado.id);
+      setModalConfirmar(false); carregarDados();
     } catch (err: any) {
-      setModalConfirmar(false);
-      Alert.alert('Não foi possível excluir', err.message);
+      setModalConfirmar(false); Alert.alert('Erro', err.message);
     }
   };
 
-  const timesFiltrados = times.filter(t => t.nome.toLowerCase().includes(busca.toLowerCase()));
+  // ── RENDERIZAÇÃO CFA OCIAN (SÓ OS CARDS DOS SUBS) ──
+  const renderCFAOcian = () => (
+    <View>
+      <View style={styles.tipoSwitchContainer}>
+        {(['INICIACAO', 'BASE'] as const).map(tipo => (
+          <TouchableOpacity key={tipo} style={[styles.tipoSwitchBtn, tipoOcian === tipo && styles.tipoSwitchBtnAtivo]} onPress={() => setTipoOcian(tipo)}>
+            <Text style={[styles.tipoSwitchTxt, tipoOcian === tipo && styles.tipoSwitchTxtAtivo]}>{tipo === 'INICIACAO' ? 'INICIAÇÃO' : 'BASE'}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <View style={styles.gridCategorias}>
+        {categoriasOcian.map(cat => (
+          // 🔥 CORREÇÃO AQUI: removido setCategoriaSelecionada(cat)
+          <TouchableOpacity key={cat.id} style={styles.cardCategoriaOcian} onPress={() => { setItemSelecionado(cat); setModalElenco(true); }}>
+            <View style={styles.iconCircleOcian}><MaterialCommunityIcons name="shield-star" size={32} color={colors.primary} /></View>
+            <Text style={styles.catOcianNome}>{cat.nome}</Text>
+            <Text style={styles.catOcianBadgeTxt}>{jogadores.filter(j => j.categoria_id === cat.id).length} atletas</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+
+  // ── RENDERIZAÇÃO ADVERSÁRIOS (SÓ CARDS SUBS -> CLICOU -> LISTA TIME DO SUB) ──
+  const renderAdversarios = () => {
+    if (subSelecionadoId !== null) {
+      const adversariosDesseSub = getAdversariosPorSub(subSelecionadoId).filter(t => t.nome.toLowerCase().includes(busca.toLowerCase()));
+      
+      return (
+        <View>
+          <View style={styles.buscaContainer}>
+            <MaterialCommunityIcons name="magnify" size={18} color={colors.text_secondary} />
+            <TextInput style={styles.buscaInput} placeholder="Buscar time..." placeholderTextColor={colors.text_secondary} value={busca} onChangeText={setBusca} />
+          </View>
+
+          <TouchableOpacity style={styles.btnVoltarCategorias} onPress={() => { setSubSelecionadoId(null); setBusca(''); }}>
+            <MaterialCommunityIcons name="chevron-left" size={20} color={colors.azulClaro} />
+            <Text style={styles.txtVoltarCategorias}>VOLTAR PARA CATEGORIAS</Text>
+          </TouchableOpacity>
+
+          {adversariosDesseSub.length === 0 ? (
+            <EmptyState icone="shield-off-outline" mensagem="Nenhum adversário neste Sub." onAction={abrirFormNovo} labelAction="Adicionar Time" />
+          ) : (
+            adversariosDesseSub.map(time => (
+              <View key={time.id} style={styles.cardLista}>
+                <View style={styles.cardLeft}>
+                  {time.escudo ? <Image source={{ uri: time.escudo }} style={styles.escudoLista} /> : (
+                    <View style={styles.escudoPlaceholder}><Text style={styles.escudoIniciais}>{time.nome.substring(0, 2).toUpperCase()}</Text></View>
+                  )}
+                  <View style={{ flexShrink: 1 }}>
+                    <Text style={styles.cardNome}>{time.nome}</Text>
+                  </View>
+                </View>
+                <View style={styles.cardAcoes}>
+                  <TouchableOpacity style={styles.btnAcao} onPress={() => abrirFormEdicao(time)}>
+                    <MaterialCommunityIcons name="pencil-outline" size={18} color={colors.azulClaro} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.btnAcao, styles.btnAcaoDanger]} onPress={() => { setItemSelecionado(time); setModalConfirmar(true); }}>
+                    <MaterialCommunityIcons name="trash-can-outline" size={18} color={colors.vermelho} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+      );
+    }
+
+    return (
+      <View>
+        <Text style={styles.sectionLabel}>SELECIONE A CATEGORIA PARA VER OS ADVERSÁRIOS</Text>
+        <View style={styles.gridCategorias}>
+          {categorias.map(cat => {
+             const qtdEquipes = getAdversariosPorSub(cat.id).length;
+             return (
+              <TouchableOpacity key={cat.id} style={styles.cardCategoriaOcian} onPress={() => setSubSelecionadoId(cat.id)}>
+                <View style={[styles.iconCircleOcian, { backgroundColor: '#2a2a2a' }]}><MaterialCommunityIcons name="shield-outline" size={28} color={colors.azulClaro} /></View>
+                <Text style={styles.catOcianNome}>{cat.nome}</Text>
+                <Text style={styles.catOcianBadgeTxt}>{qtdEquipes} equipes</Text>
+              </TouchableOpacity>
+             );
+          })}
+        </View>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <Header
-        title="MINHAS EQUIPES"
-        showLogo={false}
-        showProfile={false}
-        btnVoltar="arrow-left"
-        onBtnVoltar={onFechar}
-        semSafeArea={noModal}
-      />
+      <Header title="EQUIPES" showLogo={false} showProfile={false} btnVoltar="arrow-left" onBtnVoltar={onFechar} semSafeArea={noModal} />
 
       <View style={styles.segmentedControl}>
-        {(['times', 'campeonatos'] as const).map(aba => (
-          <TouchableOpacity
-            key={aba}
-            style={[styles.segmentBtn, abaAtiva === aba && styles.segmentBtnAtivo]}
-            onPress={() => setAbaAtiva(aba)}
-            activeOpacity={0.8}
-          >
+        {(['ocian', 'adversarios', 'campeonatos'] as const).map(aba => (
+          <TouchableOpacity key={aba} style={[styles.segmentBtn, abaAtiva === aba && styles.segmentBtnAtivo]} onPress={() => { setAbaAtiva(aba); setSubSelecionadoId(null); setBusca(''); }}>
             <Text style={[styles.segmentTxt, abaAtiva === aba && styles.segmentTxtAtivo]}>
-              {aba === 'times' ? 'TIMES' : 'CAMPEONATOS'}
+              {aba === 'ocian' ? 'CFA OCIAN' : aba === 'adversarios' ? 'ADVERSÁRIOS' : 'CAMPEONATOS'}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {abaAtiva === 'times' && (
-        <View style={styles.buscaContainer}>
-          <MaterialCommunityIcons name="magnify" size={18} color={colors.text_secondary} />
-          <TextInput
-            style={styles.buscaInput}
-            placeholder="Buscar time..."
-            placeholderTextColor={colors.text_secondary}
-            value={busca}
-            onChangeText={setBusca}
-          />
-          {busca.length > 0 && (
-            <TouchableOpacity onPress={() => setBusca('')}>
-              <MaterialCommunityIcons name="close" size={16} color={colors.text_secondary} />
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        {carregando ? (
-          [1, 2, 3].map(i => <SkeletonCard key={i} />)
-        ) : abaAtiva === 'times' ? (
-          timesFiltrados.length === 0 ? (
-            <EmptyState
-              icone="shield-off-outline"
-              mensagem="Nenhum time cadastrado ainda"
-              onAction={abrirFormNovo}
-              labelAction="Adicionar Time"
-            />
-          ) : (
-            timesFiltrados.map(time => (
-              <View key={time.id} style={styles.card}>
-                <View style={styles.cardLeft}>
-                  {time.escudo ? (
-                    <Image source={{ uri: time.escudo }} style={styles.escudo} />
-                  ) : (
-                    <View style={styles.escudoPlaceholder}>
-                      <Text style={styles.escudoIniciais}>
-                        {time.nome.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()}
-                      </Text>
+        {carregando ? <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} /> : (
+          abaAtiva === 'ocian' ? renderCFAOcian() : 
+          abaAtiva === 'adversarios' ? renderAdversarios() : (
+            <View>
+              <View style={styles.buscaContainer}>
+                <MaterialCommunityIcons name="magnify" size={18} color={colors.text_secondary} />
+                <TextInput style={styles.buscaInput} placeholder="Buscar campeonato..." placeholderTextColor={colors.text_secondary} value={busca} onChangeText={setBusca} />
+              </View>
+              {competicoesFiltradas.length === 0 ? (
+                <EmptyState icone="trophy-outline" mensagem="Nenhum campeonato" onAction={abrirFormNovo} labelAction="Criar Campeonato" />
+              ) : (
+                competicoesFiltradas.map(comp => (
+                  <View key={comp.id} style={styles.cardLista}>
+                    <View style={styles.cardLeft}>
+                      <View style={styles.escudoPlaceholder}><MaterialCommunityIcons name="trophy-outline" size={20} color={colors.azulClaro} /></View>
+                      <View style={{ flexShrink: 1 }}>
+                      <Text style={styles.cardNome} numberOfLines={2}>{comp.nome}</Text>
+                      <Text style={styles.cardSub}>{comp.ano}</Text>
                     </View>
-                  )}
-                  <Text style={styles.cardNome}>{time.nome}</Text>
-                </View>
-                <View style={styles.cardAcoes}>
-                  <TouchableOpacity style={styles.btnAcao} onPress={() => abrirFormEdicao(time)} activeOpacity={0.7}>
-                    <MaterialCommunityIcons name="pencil-outline" size={18} color={colors.azulClaro} />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.btnAcao, styles.btnAcaoDanger]} onPress={() => abrirConfirmarExclusao(time)} activeOpacity={0.7}>
-                    <MaterialCommunityIcons name="trash-can-outline" size={18} color={colors.vermelho} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
-          )
-        ) : (
-          competicoes.length === 0 ? (
-            <EmptyState
-              icone="trophy-outline"
-              mensagem="Nenhum campeonato cadastrado ainda"
-              onAction={abrirFormNovo}
-              labelAction="Adicionar Campeonato"
-            />
-          ) : (
-            competicoes.map(comp => (
-              <View key={comp.id} style={styles.card}>
-                <View style={styles.cardLeft}>
-                  <View style={styles.escudoPlaceholder}>
-                    <MaterialCommunityIcons name="trophy-outline" size={22} color={colors.azulClaro} />
+                    </View>
+                    <View style={styles.cardAcoes}>
+                      <TouchableOpacity style={styles.btnAcao} onPress={() => abrirFormEdicao(comp)}><MaterialCommunityIcons name="pencil-outline" size={18} color={colors.azulClaro} /></TouchableOpacity>
+                      <TouchableOpacity style={[styles.btnAcao, styles.btnAcaoDanger]} onPress={() => { setItemSelecionado(comp); setModalConfirmar(true); }}><MaterialCommunityIcons name="trash-can-outline" size={18} color={colors.vermelho} /></TouchableOpacity>
+                    </View>
                   </View>
-                  <View>
-                    <Text style={styles.cardNome}>{comp.nome}</Text>
-                    <Text style={styles.cardAno}>{comp.ano}</Text>
-                  </View>
-                </View>
-                <View style={styles.cardAcoes}>
-                  <TouchableOpacity style={styles.btnAcao} onPress={() => abrirFormEdicao(comp)} activeOpacity={0.7}>
-                    <MaterialCommunityIcons name="pencil-outline" size={18} color={colors.azulClaro} />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.btnAcao, styles.btnAcaoDanger]} onPress={() => abrirConfirmarExclusao(comp)} activeOpacity={0.7}>
-                    <MaterialCommunityIcons name="trash-can-outline" size={18} color={colors.vermelho} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
+                ))
+              )}
+            </View>
           )
         )}
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <TouchableOpacity style={styles.fab} onPress={abrirFormNovo} activeOpacity={0.8}>
-        <MaterialCommunityIcons name="plus" size={30} color="#FFF" />
-      </TouchableOpacity>
+      {/* FAB SÓ APARECE EM ADVERSÁRIOS (Se tiver um Sub aberto) E CAMPEONATOS */}
+      {abaAtiva !== 'ocian' && (abaAtiva === 'campeonatos' || (abaAtiva === 'adversarios' && subSelecionadoId !== null)) && (
+        <TouchableOpacity style={styles.fab} onPress={abrirFormNovo} activeOpacity={0.8}>
+          <MaterialCommunityIcons name="plus" size={30} color="#FFF" />
+        </TouchableOpacity>
+      )}
 
-      <Modal visible={modalForm} transparent animationType="slide" onRequestClose={() => setModalForm(false)}>
+      {/* ── MODAL ELENCO OCIAN ── */}
+      <Modal visible={modalElenco} transparent animationType="slide">
+        <Pressable style={styles.modalOverlay} onPress={() => setModalElenco(false)}>
+          <View style={[styles.modalCard, { maxHeight: '80%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitulo}>Elenco {itemSelecionado?.nome}</Text>
+              <TouchableOpacity onPress={() => setModalElenco(false)}><MaterialCommunityIcons name="close" size={24} color={colors.text} /></TouchableOpacity>
+            </View>
+            
+            {jogadores.filter(j => j.categoria_id === itemSelecionado?.id).length === 0 ? (
+              <EmptyState icone="account-group-outline" mensagem="Nenhum atleta cadastrado neste sub." />
+            ) : (
+              <FlatList
+                data={jogadores.filter(j => j.categoria_id === itemSelecionado?.id)}
+                keyExtractor={item => item.id.toString()}
+                renderItem={({ item }) => (
+                  <View style={styles.cardJogador}>
+                    <View style={styles.jogadorCamisa}><Text style={styles.jogadorCamisaTxt}>{item.numCamisa ?? '-'}</Text></View>
+                    <View><Text style={styles.jogadorNome}>{item.nome}</Text><Text style={styles.jogadorPosicao}>{item.posicao}</Text></View>
+                  </View>
+                )}
+              />
+            )}
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* ── MODAL FORM ADVERSÁRIOS E CAMPEONATOS ── */}
+      <Modal visible={modalForm} transparent animationType="slide">
         <Pressable style={styles.modalOverlay} onPress={() => setModalForm(false)}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitulo}>
-                {itemSelecionado
-                  ? (abaAtiva === 'times' ? 'Editar Time' : 'Editar Campeonato')
-                  : (abaAtiva === 'times' ? 'Novo Time' : 'Novo Campeonato')}
-              </Text>
-              <TouchableOpacity onPress={() => setModalForm(false)}>
-                <MaterialCommunityIcons name="close" size={22} color={colors.text} />
-              </TouchableOpacity>
+              <Text style={styles.modalTitulo}>{itemSelecionado ? 'Editar' : 'Novo'} {abaAtiva === 'adversarios' ? 'Adversário' : 'Torneio'}</Text>
+              <TouchableOpacity onPress={() => setModalForm(false)}><MaterialCommunityIcons name="close" size={22} color={colors.text} /></TouchableOpacity>
             </View>
 
-            {abaAtiva === 'times' && (
-              <TouchableOpacity style={styles.escudoPicker} onPress={escolherImagem} activeOpacity={0.8}>
-                {escudoUri ? (
-                  <Image source={{ uri: escudoUri }} style={styles.escudoPickerImg} />
-                ) : escudoUrl ? (
-                  <Image source={{ uri: escudoUrl }} style={styles.escudoPickerImg} />
-                ) : (
-                  <>
-                    <MaterialCommunityIcons name="camera-plus-outline" size={28} color={colors.text_secondary} />
-                    <Text style={styles.escudoPickerTxt}>Adicionar escudo</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+            {abaAtiva === 'adversarios' && (
+              <>
+                <TouchableOpacity style={styles.escudoPicker} onPress={escolherImagem}>
+                  {escudoUri || escudoUrl ? <Image source={{ uri: escudoUri || escudoUrl || '' }} style={styles.escudoPickerImg} /> : (
+                    <><MaterialCommunityIcons name="camera-plus-outline" size={28} color={colors.text_secondary} /><Text style={styles.escudoPickerTxt}>Adicionar escudo</Text></>
+                  )}
+                </TouchableOpacity>
+                <Text style={styles.modalSubtitulo}>Selecione as categorias:</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                  {categorias.map(cat => (
+                    <TouchableOpacity key={cat.id} style={[styles.pill, categoriasForm.includes(cat.id) && styles.pillActive]} onPress={() => toggleCategoriaForm(cat.id)}>
+                      <Text style={[styles.pillText, categoriasForm.includes(cat.id) && styles.pillTextActive]}>{cat.nome}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
             )}
 
             <View style={styles.inputRow}>
-              <MaterialCommunityIcons name={abaAtiva === 'times' ? 'shield-outline' : 'trophy-outline'} size={18} color={colors.text_secondary} />
-              <TextInput
-                style={styles.input}
-                placeholder="Nome"
-                placeholderTextColor={colors.text_secondary}
-                value={nomeForm}
-                onChangeText={setNomeForm}
-              />
+              <MaterialCommunityIcons name={abaAtiva === 'campeonatos' ? 'trophy-outline' : 'shield-outline'} size={18} color={colors.text_secondary} />
+              <TextInput style={styles.input} placeholder="Nome" placeholderTextColor={colors.text_secondary} value={nomeForm} onChangeText={setNomeForm} />
             </View>
 
             {abaAtiva === 'campeonatos' && (
               <View style={styles.inputRow}>
                 <MaterialCommunityIcons name="calendar-outline" size={18} color={colors.text_secondary} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ano"
-                  placeholderTextColor={colors.text_secondary}
-                  value={anoForm}
-                  onChangeText={setAnoForm}
-                  keyboardType="numeric"
-                  maxLength={4}
-                />
+                <TextInput style={styles.input} placeholder="Ano" placeholderTextColor={colors.text_secondary} value={anoForm} onChangeText={setAnoForm} keyboardType="numeric" maxLength={4} />
               </View>
             )}
 
-            <TouchableOpacity style={styles.btnSalvar} onPress={salvar} activeOpacity={0.8} disabled={salvando}>
-              {salvando
-                ? <ActivityIndicator color="#FFF" />
-                : <Text style={styles.btnSalvarTxt}>SALVAR</Text>
-              }
+            <TouchableOpacity style={styles.btnSalvar} onPress={salvar} disabled={salvando}>
+              {salvando ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnSalvarTxt}>SALVAR</Text>}
             </TouchableOpacity>
           </View>
         </Pressable>
       </Modal>
 
-      <Modal visible={modalConfirmar} transparent animationType="fade" onRequestClose={() => setModalConfirmar(false)}>
+      {/* ── MODAL CONFIRMAR EXCLUSÃO ── */}
+      <Modal visible={modalConfirmar} transparent animationType="fade">
         <Pressable style={styles.modalOverlay} onPress={() => setModalConfirmar(false)}>
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, { alignItems: 'center' }]}>
             <MaterialCommunityIcons name="trash-can-outline" size={36} color={colors.vermelho} style={{ marginBottom: 8 }} />
             <Text style={styles.modalTitulo}>Excluir</Text>
-            <Text style={styles.modalSubtitulo}>
-              Tem certeza que deseja excluir "{itemSelecionado?.nome}"? Esta ação não pode ser desfeita.
-            </Text>
+            <Text style={styles.modalSubtitulo}>Tem certeza que deseja excluir "{itemSelecionado?.nome}"?</Text>
             <View style={styles.modalBotoes}>
-              <TouchableOpacity style={styles.btnNao} onPress={() => setModalConfirmar(false)} activeOpacity={0.8}>
-                <Text style={styles.txtNao}>CANCELAR</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.btnSim} onPress={excluir} activeOpacity={0.8}>
-                <Text style={styles.txtSim}>EXCLUIR</Text>
-              </TouchableOpacity>
+              <TouchableOpacity style={styles.btnNao} onPress={() => setModalConfirmar(false)}><Text style={styles.txtNao}>CANCELAR</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.btnSim} onPress={excluir}><Text style={styles.txtSim}>EXCLUIR</Text></TouchableOpacity>
             </View>
           </View>
         </Pressable>

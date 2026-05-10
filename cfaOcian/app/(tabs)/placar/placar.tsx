@@ -4,7 +4,7 @@ import { Header } from '@/src/components/Header';
 import { colors } from '@/src/theme/colors';
 import { styles } from './placarStyles';
 import PagerView from 'react-native-pager-view';
-import { CarrosselSubs, SUBS } from '@/src/components/CarrosselSubs';
+import { CarrosselSubs, SUBS_INICIACAO, SUBS_BASE } from '@/src/components/CarrosselSubs';
 
 interface TimeClassificacao {
   id: number;
@@ -22,32 +22,48 @@ interface TimeClassificacao {
 
 export default function Placar() {
   const pagerRef = useRef<PagerView>(null);
-  const [activeIndex, setActiveIndex] = useState(1);
-  const [faseAtiva, setFaseAtiva] = useState('FASE DE GRUPOS');
+  
+  // ── ESTADOS DE FILTRO ──
+  const [tipoClassificacao, setTipoClassificacao] = useState<'FASE DE GRUPOS' | 'GERAL'>('FASE DE GRUPOS');
+  const [faseAtiva, setFaseAtiva] = useState<'INICIACAO' | 'BASE'>('INICIACAO');
+  const [subIndex, setSubIndex] = useState(0);
+  
+  // ── ESTADOS DE DADOS ──
   const [loading, setLoading] = useState(false);
   const [tabela, setTabela] = useState<TimeClassificacao[]>([]);
 
-  const handleSelectCategory = (index: number) => {
+  // Define qual array de subs estamos usando agora
+  const subsAtuais = faseAtiva === 'INICIACAO' ? SUBS_INICIACAO : SUBS_BASE;
+
+  // ── SINCRONIZAÇÃO CARROSSEL <-> PAGERVIEW ──
+  const handleSubChange = (index: number) => {
+    setSubIndex(index);
     pagerRef.current?.setPage(index);
-    setActiveIndex(index);
   };
 
   const onPageSelected = (e: any) => {
     const index = e.nativeEvent.position;
-    if (index !== activeIndex) setActiveIndex(index);
+    if (index !== subIndex) setSubIndex(index);
   };
 
+  const handleTrocarFase = (novaFase: 'INICIACAO' | 'BASE') => {
+    setFaseAtiva(novaFase);
+    handleSubChange(0); // Volta para a primeira tela ao trocar de Iniciação pra Base
+  };
+
+  // ── BUSCA DE DADOS (Mock por enquanto) ──
   useEffect(() => {
     const buscarClassificacao = async () => {
       setLoading(true);
       try {
+        // Aqui no futuro entrará a chamada da API buscando pelo ID do Sub e Tipo de Classificação
         setTimeout(() => {
           setTabela([
             { id: 1, posicao: 1,  clube: 'OCIAN PRAIA CLUBE', pontos: 12, jogos: 4, vitorias: 4, empates: 0, derrotas: 0, saldo_gols: 18,  serie: 'ouro',   isOcian: true  },
-            { id: 2, posicao: 2,  clube: 'Santos FC',          pontos: 10, jogos: 4, vitorias: 3, empates: 1, derrotas: 0, saldo_gols: 12,  serie: 'ouro',   isOcian: false },
-            { id: 3, posicao: 9,  clube: 'Portuguesa',         pontos: 6,  jogos: 4, vitorias: 2, empates: 0, derrotas: 2, saldo_gols: 2,   serie: 'prata',  isOcian: false },
-            { id: 4, posicao: 17, clube: 'São Caetano',        pontos: 4,  jogos: 4, vitorias: 1, empates: 1, derrotas: 2, saldo_gols: -4,  serie: 'bronze', isOcian: false },
-            { id: 5, posicao: 25, clube: 'Jabaquara AC',       pontos: 0,  jogos: 4, vitorias: 0, empates: 0, derrotas: 4, saldo_gols: -14, serie: 'rubi',   isOcian: false },
+            { id: 2, posicao: 2,  clube: 'Santos FC',         pontos: 10, jogos: 4, vitorias: 3, empates: 1, derrotas: 0, saldo_gols: 12,  serie: 'ouro',   isOcian: false },
+            { id: 3, posicao: 9,  clube: 'Portuguesa',        pontos: 6,  jogos: 4, vitorias: 2, empates: 0, derrotas: 2, saldo_gols: 2,   serie: 'prata',  isOcian: false },
+            { id: 4, posicao: 17, clube: 'São Caetano',       pontos: 4,  jogos: 4, vitorias: 1, empates: 1, derrotas: 2, saldo_gols: -4,  serie: 'bronze', isOcian: false },
+            { id: 5, posicao: 25, clube: 'Jabaquara AC',      pontos: 0,  jogos: 4, vitorias: 0, empates: 0, derrotas: 4, saldo_gols: -14, serie: 'rubi',   isOcian: false },
           ]);
           setLoading(false);
         }, 500);
@@ -57,7 +73,7 @@ export default function Placar() {
     };
 
     buscarClassificacao();
-  }, [activeIndex, faseAtiva]);
+  }, [subIndex, faseAtiva, tipoClassificacao]);
 
   const getSerieColor = (serie: string) => {
     switch (serie) {
@@ -73,41 +89,46 @@ export default function Placar() {
     <View style={styles.container}>
       <Header title="PLACAR" icon="trophy-outline" showLogo={false} showProfile={true} btnNotificacao='bell'/>
 
-      <CarrosselSubs
-        indexAtual={activeIndex}
-        onChange={handleSelectCategory}
+      {/* ── CARROSSEL DE SUBS ── */}
+      <CarrosselSubs 
+        tipoFiltro={faseAtiva}
+        onTrocarTipo={handleTrocarFase}
+        indexAtual={subIndex} 
+        onChangeIndex={handleSubChange} 
       />
 
+      {/* ── TOGGLE FASE DE GRUPOS / GERAL ── */}
       <View style={styles.toggleContainer}>
         <TouchableOpacity
-          style={[styles.toggleBtn, faseAtiva === 'FASE DE GRUPOS' && styles.toggleBtnActive]}
-          onPress={() => setFaseAtiva('FASE DE GRUPOS')}
+          style={[styles.toggleBtn, tipoClassificacao === 'FASE DE GRUPOS' && styles.toggleBtnActive]}
+          onPress={() => setTipoClassificacao('FASE DE GRUPOS')}
           activeOpacity={0.8}
         >
-          <Text style={[styles.toggleText, faseAtiva === 'FASE DE GRUPOS' && styles.toggleTextActive]}>
+          <Text style={[styles.toggleText, tipoClassificacao === 'FASE DE GRUPOS' && styles.toggleTextActive]}>
             FASE DE GRUPOS
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.toggleBtn, faseAtiva === 'GERAL' && styles.toggleBtnActive]}
-          onPress={() => setFaseAtiva('GERAL')}
+          style={[styles.toggleBtn, tipoClassificacao === 'GERAL' && styles.toggleBtnActive]}
+          onPress={() => setTipoClassificacao('GERAL')}
           activeOpacity={0.8}
         >
-          <Text style={[styles.toggleText, faseAtiva === 'GERAL' && styles.toggleTextActive]}>
+          <Text style={[styles.toggleText, tipoClassificacao === 'GERAL' && styles.toggleTextActive]}>
             GERAL
           </Text>
         </TouchableOpacity>
       </View>
 
+      {/* ── TELAS DESLIZÁVEIS (PAGERVIEW) ── */}
       <PagerView
         ref={pagerRef}
         style={styles.pagerView}
-        initialPage={1}
+        initialPage={0}
         onPageSelected={onPageSelected}
       >
-        {SUBS.map((sub) => (
-          <View key={sub.id}>
+        {subsAtuais.map((sub, pageIndex) => (
+          <View key={`${faseAtiva}-${sub.id}`}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
               <View style={styles.tableContainer}>

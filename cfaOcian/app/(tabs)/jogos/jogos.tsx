@@ -9,9 +9,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { fetchPartidas } from '@/src/services/api';
 import OrganizarPartidas from '../organizarPartidas/organizarPartidas';
 
-const FILTROS_MES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-const FILTROS_CAT = ['Todas', 'Sub-12', 'Sub-14', 'Sub-16', 'Sub-18'];
+const FILTROS_MES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+// Categorias organizadas
+const FILTROS_INICIACAO = ['SUB-7', 'SUB-8', 'SUB-9', 'SUB-10'];
+const FILTROS_BASE = ['SUB-12', 'SUB-14', 'SUB-16', 'SUB-18'];
 
 interface Time { id: number; nome: string; escudo: string | null; }
 interface Partida {
@@ -32,19 +34,21 @@ interface DiaJogo { data: string; partidas: Partida[]; }
 function agruparPorDia(partidas: Partida[]): DiaJogo[] {
   const mapa = new Map<string, Partida[]>();
   for (const p of partidas) {
-    const data = new Date(p.data);
-    const chave = data.toLocaleDateString('pt-BR', {
-      weekday: 'long', day: 'numeric', month: 'long',
+    // Tratamento à prova de falhas de fuso horário (Timezone)
+    const [ano, mes, dia] = p.data.split('T')[0].split('-');
+    const dataObj = new Date(Number(ano), Number(mes) - 1, Number(dia));
+    
+    const chave = dataObj.toLocaleDateString('pt-BR', {
+      weekday: 'long', day: '2-digit', month: 'long',
     });
-    const chaveCapitalizada = chave.charAt(0).toUpperCase() + chave.slice(1);
+    
+    // Deixa tudo em maiúsculo (ex: SÁBADO, 11 DE ABRIL)
+    const chaveCapitalizada = chave.toUpperCase();
+    
     if (!mapa.has(chaveCapitalizada)) mapa.set(chaveCapitalizada, []);
     mapa.get(chaveCapitalizada)!.push(p);
   }
   return Array.from(mapa.entries()).map(([data, partidas]) => ({ data, partidas }));
-}
-
-function isOcian(time: Time) {
-  return time.nome.toUpperCase().includes('OCIAN');
 }
 
 function BadgeStatus({ status }: { status: Partida['status'] }) {
@@ -71,11 +75,14 @@ export default function Jogos() {
   const isAdmin = true;
 
   const [mesAtivo, setMesAtivo] = useState(new Date().getMonth() + 1);
-  const [catAtiva, setCatAtiva] = useState('Todas');
+  const [tipoFiltro, setTipoFiltro] = useState<'INICIACAO' | 'BASE'>('INICIACAO');
+  const [subFiltro, setSubFiltro] = useState<string | null>(null);
+  
   const [modalMesVisible, setModalMesVisible] = useState(false);
   const [dias, setDias] = useState<DiaJogo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [modalOrganizar, setModalOrganizar] = useState(false);
 
   const carregarPartidas = useCallback(async () => {
     try {
@@ -103,18 +110,25 @@ export default function Jogos() {
   };
 
   const partidasFiltradas = (partidas: Partida[]) => {
-    if (catAtiva === 'Todas') return partidas;
-    return partidas.filter(p =>
-      p.categoria?.nome.replace('-', ' ').toUpperCase() === catAtiva.replace('-', ' ').toUpperCase()
-    );
+    return partidas.filter(p => {
+      const catNome = p.categoria?.nome.replace(' ', '-').toUpperCase() || '';
+      const isIniciacao = FILTROS_INICIACAO.includes(catNome);
+      const isBase = FILTROS_BASE.includes(catNome);
+
+      if (tipoFiltro === 'INICIACAO' && !isIniciacao) return false;
+      if (tipoFiltro === 'BASE' && !isBase) return false;
+
+      // Filtro específico do Sub (Pills)
+      if (subFiltro && catNome !== subFiltro) return false;
+
+      return true;
+    });
   };
 
- const placar = (p: Partida) => {
-  if (p.status === 'AGENDADA') return '-';
-  return `${p.gols_mandante}  ×  ${p.gols_visitante}`;
-};
-
-const [modalOrganizar, setModalOrganizar] = useState(false);
+  const placar = (p: Partida) => {
+    if (p.status === 'AGENDADA') return '-';
+    return `${p.gols_mandante}  ×  ${p.gols_visitante}`;
+  };
 
   return (
     <View style={styles.container}>
@@ -134,14 +148,33 @@ const [modalOrganizar, setModalOrganizar] = useState(false);
             </TouchableOpacity>
           </View>
 
+          {/* Toggle INICIAÇÃO / BASE */}
+          <View style={styles.tipoSwitchContainer}>
+            {(['INICIACAO', 'BASE'] as const).map(tipo => (
+              <TouchableOpacity 
+                key={tipo} 
+                style={[styles.tipoSwitchBtn, tipoFiltro === tipo && styles.tipoSwitchBtnAtivo]} 
+                onPress={() => { setTipoFiltro(tipo); setSubFiltro(null); }}
+              >
+                <Text style={[styles.tipoSwitchTxt, tipoFiltro === tipo && styles.tipoSwitchTxtAtivo]}>
+                  {tipo === 'INICIACAO' ? 'INICIAÇÃO' : 'BASE'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Filtros das Categorias Específicas */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillRow}>
-            {FILTROS_CAT.map(cat => (
+            <TouchableOpacity style={[styles.pill, subFiltro === null && styles.pillActive]} onPress={() => setSubFiltro(null)}>
+              <Text style={[styles.pillText, subFiltro === null && styles.pillTextActive]}>Todos</Text>
+            </TouchableOpacity>
+            {(tipoFiltro === 'INICIACAO' ? FILTROS_INICIACAO : FILTROS_BASE).map(cat => (
               <TouchableOpacity
                 key={cat}
-                style={[styles.pill, catAtiva === cat && styles.pillActive]}
-                onPress={() => setCatAtiva(cat)}
+                style={[styles.pill, subFiltro === cat && styles.pillActive]}
+                onPress={() => setSubFiltro(cat)}
               >
-                <Text style={[styles.pillText, catAtiva === cat && styles.pillTextActive]}>{cat}</Text>
+                <Text style={[styles.pillText, subFiltro === cat && styles.pillTextActive]}>{cat}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -167,72 +200,62 @@ const [modalOrganizar, setModalOrganizar] = useState(false);
                   <Text style={styles.dateText}>{dia.data}</Text>
                 </View>
 
-                {filtradas.map(partida => {
-                  const ocianJoga = isOcian(partida.mandante) || isOcian(partida.visitante);
-                  return (
-                    <View key={partida.id} style={[styles.matchCard, ocianJoga && styles.matchCardOcian]}>
-
-                      <View style={styles.cardTop}>
-                        <View style={styles.cardTopLeft}>
-                          <MaterialCommunityIcons name="clock-outline" size={16} color={colors.text_secondary} />
-                          <Text style={styles.timeText}>{partida.horario ?? '--:--'}</Text>
-                          <View style={styles.separator} />
-                          <Text style={styles.catText}>{partida.categoria?.nome ?? '—'}</Text>
-                        </View>
-
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                          <BadgeStatus status={partida.status} />
-                          {ocianJoga && (
-                            <View style={styles.badge}>
-                              <MaterialCommunityIcons
-                                name={partida.emCasa ? 'home-outline' : 'bus'}
-                                size={14}
-                                color={colors.text}
-                              />
-                              <Text style={styles.badgeText}>{partida.emCasa ? 'CASA' : 'FORA'}</Text>
-                            </View>
-                          )}
-                        </View>
+                {filtradas.map(partida => (
+                  <View key={partida.id} style={styles.matchCard}>
+                    <View style={styles.cardTop}>
+                      <View style={styles.cardTopLeft}>
+                        <MaterialCommunityIcons name="clock-outline" size={16} color={colors.text_secondary} />
+                        <Text style={styles.timeText}>{partida.horario ?? '--:--'}</Text>
+                        <View style={styles.separator} />
+                        <Text style={styles.catText}>{partida.categoria?.nome ?? '—'}</Text>
                       </View>
 
-                      <View style={styles.cardBody}>
-                        <View style={styles.teamCol}>
-                          {partida.mandante.escudo ? (
-                            <Image source={{ uri: partida.mandante.escudo }} style={styles.teamLogo} />
-                          ) : (
-                            <View style={[styles.teamLogo, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#2a2a2a' }]}>
-                              <MaterialCommunityIcons name="shield-outline" size={28} color="#444" />
-                            </View>
-                          )}
-                          <Text style={styles.teamName} numberOfLines={2}>{partida.mandante.nome}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <BadgeStatus status={partida.status} />
+                        <View style={styles.badge}>
+                          <MaterialCommunityIcons name={partida.emCasa ? 'home-outline' : 'bus'} size={14} color={colors.text} />
+                          <Text style={styles.badgeText}>{partida.emCasa ? 'CASA' : 'FORA'}</Text>
                         </View>
-
-                        <View style={{ alignItems: 'center', gap: 4 }}>
-                          <Text style={styles.versusText}>{placar(partida)}</Text>
-                          {partida.status === 'AGENDADA' && (
-                            <Text style={{ fontFamily: 'Creato-Regular', color: '#444', fontSize: 10, letterSpacing: 1 }}>VS</Text>
-                          )}
-                        </View>
-
-                        <View style={styles.teamCol}>
-                          {partida.visitante.escudo ? (
-                            <Image source={{ uri: partida.visitante.escudo }} style={styles.teamLogo} />
-                          ) : (
-                            <View style={[styles.teamLogo, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#2a2a2a' }]}>
-                              <MaterialCommunityIcons name="shield-outline" size={28} color="#444" />
-                            </View>
-                          )}
-                          <Text style={styles.teamName} numberOfLines={2}>{partida.visitante.nome}</Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.cardFooter}>
-                        <MaterialCommunityIcons name="map-marker-outline" size={16} color="#AAAAAA" />
-                        <Text style={styles.locationText}>{partida.local ?? 'Local não definido'}</Text>
                       </View>
                     </View>
-                  );
-                })}
+
+                    <View style={styles.cardBody}>
+                      <View style={styles.teamCol}>
+                        {partida.mandante.escudo ? (
+                          <Image source={{ uri: partida.mandante.escudo }} style={styles.teamLogo} />
+                        ) : (
+                          <View style={[styles.teamLogo, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#2a2a2a' }]}>
+                            <MaterialCommunityIcons name="shield-outline" size={28} color="#444" />
+                          </View>
+                        )}
+                        <Text style={styles.teamName} numberOfLines={2}>{partida.mandante.nome}</Text>
+                      </View>
+
+                      <View style={{ alignItems: 'center', gap: 4 }}>
+                        <Text style={styles.versusText}>{placar(partida)}</Text>
+                        {partida.status === 'AGENDADA' && (
+                          <Text style={{ fontFamily: 'Creato-Regular', color: '#444', fontSize: 10, letterSpacing: 1 }}>VS</Text>
+                        )}
+                      </View>
+
+                      <View style={styles.teamCol}>
+                        {partida.visitante.escudo ? (
+                          <Image source={{ uri: partida.visitante.escudo }} style={styles.teamLogo} />
+                        ) : (
+                          <View style={[styles.teamLogo, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#2a2a2a' }]}>
+                            <MaterialCommunityIcons name="shield-outline" size={28} color="#444" />
+                          </View>
+                        )}
+                        <Text style={styles.teamName} numberOfLines={2}>{partida.visitante.nome}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.cardFooter}>
+                      <MaterialCommunityIcons name="map-marker-outline" size={16} color="#AAAAAA" />
+                      <Text style={styles.locationText}>{partida.local ?? 'Local não definido'}</Text>
+                    </View>
+                  </View>
+                ))}
               </View>
             );
           })
@@ -249,26 +272,11 @@ const [modalOrganizar, setModalOrganizar] = useState(false);
         </TouchableOpacity>
       )}
 
-       <Modal
-        visible={modalOrganizar}
-        transparent={false}
-        animationType="slide"
-        onRequestClose={() => setModalOrganizar(false)}
-      >
-        <OrganizarPartidas
-        noModal={true}
-        onFechar={() => {
-        setModalOrganizar(false);
-        carregarPartidas();
-        }} />
+      <Modal visible={modalOrganizar} transparent={false} animationType="slide" onRequestClose={() => setModalOrganizar(false)}>
+        <OrganizarPartidas noModal={true} onFechar={() => { setModalOrganizar(false); carregarPartidas(); }} />
       </Modal>
 
-      <Modal
-        visible={modalMesVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setModalMesVisible(false)}
-      >
+      <Modal visible={modalMesVisible} transparent={true} animationType="fade" onRequestClose={() => setModalMesVisible(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setModalMesVisible(false)}>
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
@@ -277,29 +285,17 @@ const [modalOrganizar, setModalOrganizar] = useState(false);
                 <MaterialCommunityIcons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
-
             <View style={styles.monthGrid}>
               {FILTROS_MES.map((mes, index) => {
                 const numMes = index + 1;
                 return (
                   <TouchableOpacity
                     key={mes}
-                    style={[
-                      styles.monthGridItem,
-                      mesAtivo === numMes && styles.monthGridItemActive
-                    ]}
-                    onPress={() => {
-                      setMesAtivo(numMes);
-                      setModalMesVisible(false);
-                    }}
+                    style={[styles.monthGridItem, mesAtivo === numMes && styles.monthGridItemActive]}
+                    onPress={() => { setMesAtivo(numMes); setModalMesVisible(false); }}
                   >
-                    <Text
-                      style={[
-                        styles.monthGridText,
-                        mesAtivo === numMes && styles.monthGridTextActive
-                      ]}
-                    >
-                      {mes.substring(0, 3).toUpperCase()} {/* Ex: JAN, FEV, MAR */}
+                    <Text style={[styles.monthGridText, mesAtivo === numMes && styles.monthGridTextActive]}>
+                      {mes.substring(0, 3).toUpperCase()}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -308,7 +304,6 @@ const [modalOrganizar, setModalOrganizar] = useState(false);
           </Pressable>
         </Pressable>
       </Modal>
-
     </View>
   );
 }

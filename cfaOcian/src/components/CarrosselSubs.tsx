@@ -7,50 +7,165 @@ import { colors } from '@/src/theme/colors';
 const { width: windowWidth } = Dimensions.get('window');
 const MARGEM_CONTEUDO = 20;
 const LARGURA_DISPONIVEL = windowWidth - MARGEM_CONTEUDO * 2;
-const LARGURA_ITEM = 120;
-const ITEM_INTERVAL = LARGURA_ITEM + 10;
+const LARGURA_ITEM = 100;
+const GAP_ITEM = 8;
+const ITEM_INTERVAL = LARGURA_ITEM + GAP_ITEM;
 
-export const SUBS = [
-  { id: '1', title: 'SUB 12' },
-  { id: '2', title: 'SUB 14' },
-  { id: '3', title: 'SUB 16' },
-  { id: '4', title: 'SUB 18' },
+const LARGURA_BOTAO = 32;
+const PADDING_H = 8;
+const LARGURA_TRACK = LARGURA_DISPONIVEL - LARGURA_BOTAO * 2 - PADDING_H * 2;
+
+// Padding para centralizar o item ativo no meio do track
+const PADDING_CENTRALIZADOR = (LARGURA_TRACK - LARGURA_ITEM) / 2;
+
+export const SUBS_INICIACAO = [
+  { id: '1', title: 'SUB-7' },
+  { id: '2', title: 'SUB-8' },
+  { id: '3', title: 'SUB-9' },
+  { id: '4', title: 'SUB-10' },
+];
+
+export const SUBS_BASE = [
+  { id: '5', title: 'SUB-12' },
+  { id: '6', title: 'SUB-14' },
+  { id: '7', title: 'SUB-16' },
+  { id: '8', title: 'SUB-18' },
 ];
 
 interface CarrosselSubsProps {
+  tipoFiltro: 'INICIACAO' | 'BASE';
+  onTrocarTipo: (tipo: 'INICIACAO' | 'BASE') => void;
   indexAtual: number;
-  onChange: (index: number) => void;
+  onChangeIndex: (index: number) => void;
 }
 
-export function CarrosselSubs({ indexAtual, onChange }: CarrosselSubsProps) {
+function DotIndicator({
+  total,
+  current,
+  onPress,
+}: {
+  total: number;
+  current: number;
+  onPress: (i: number) => void;
+}) {
+  return (
+    <View style={dotStyles.row}>
+      {Array.from({ length: total }).map((_, i) => (
+        <TouchableOpacity
+          key={i}
+          onPress={() => onPress(i)}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+        >
+          <View style={[dotStyles.dot, i === current && dotStyles.dotActive]} />
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+const dotStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 8,
+  },
+  dot: {
+    width: 5,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#252525',
+  },
+  dotActive: {
+    width: 18,
+    backgroundColor: colors.primary,
+  },
+});
+
+export function CarrosselSubs({
+  tipoFiltro,
+  onTrocarTipo,
+  indexAtual,
+  onChangeIndex,
+}: CarrosselSubsProps) {
   const listRef = useRef<FlatList>(null);
+  const dadosAtuais = tipoFiltro === 'INICIACAO' ? SUBS_INICIACAO : SUBS_BASE;
 
   useEffect(() => {
-    listRef.current?.scrollToIndex({ index: indexAtual, animated: true, viewPosition: 0.5 });
-  }, [indexAtual]);
+    setTimeout(() => {
+      if (indexAtual >= 0 && indexAtual < dadosAtuais.length) {
+        listRef.current?.scrollToIndex({
+          index: indexAtual,
+          animated: true,
+          viewPosition: 0.5,
+        });
+      }
+    }, 50);
+  }, [indexAtual, dadosAtuais.length]);
 
   const irParaAnterior = () => {
-    if (indexAtual > 0) onChange(indexAtual - 1);
+    if (indexAtual > 0) onChangeIndex(indexAtual - 1);
   };
 
   const irParaProximo = () => {
-    if (indexAtual < SUBS.length - 1) onChange(indexAtual + 1);
+    if (indexAtual < dadosAtuais.length - 1) onChangeIndex(indexAtual + 1);
   };
+
+  const handleTrocarFase = (tipo: 'INICIACAO' | 'BASE') => {
+    if (tipo !== tipoFiltro) {
+      onTrocarTipo(tipo);
+      onChangeIndex(0);
+    }
+  };
+
+  const isPrevDisabled = indexAtual === 0;
+  const isNextDisabled = indexAtual === dadosAtuais.length - 1;
 
   return (
     <View style={styles.wrapper}>
+
+      {/* ── TOGGLE ── */}
+      <View style={styles.tipoSwitchContainer}>
+        {(['INICIACAO', 'BASE'] as const).map(tipo => (
+          <TouchableOpacity
+            key={tipo}
+            style={[styles.tipoSwitchBtn, tipoFiltro === tipo && styles.tipoSwitchBtnAtivo]}
+            onPress={() => handleTrocarFase(tipo)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.tipoSwitchTxt, tipoFiltro === tipo && styles.tipoSwitchTxtAtivo]}>
+              {tipo === 'INICIACAO' ? 'INICIAÇÃO' : 'BASE'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* ── CARROSSEL ── */}
       <View style={styles.internal}>
-        <TouchableOpacity onPress={irParaAnterior} style={styles.botao} activeOpacity={0.7}>
-          <MaterialCommunityIcons name="chevron-left" size={30} color="#FFF" />
+        <TouchableOpacity
+          onPress={irParaAnterior}
+          style={styles.botao}
+          activeOpacity={0.7}
+          disabled={isPrevDisabled}
+        >
+          <MaterialCommunityIcons
+            name="chevron-left"
+            size={24}
+            color={isPrevDisabled ? '#2a2a2a' : '#FFF'}
+          />
         </TouchableOpacity>
 
         <FlatList
           ref={listRef}
-          data={SUBS}
+          data={dadosAtuais}
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.id}
-          scrollEnabled={false}
+          scrollEnabled={true}
+          snapToInterval={ITEM_INTERVAL}
+          decelerationRate="fast"
           contentContainerStyle={styles.listContent}
           getItemLayout={(_, index) => ({
             length: ITEM_INTERVAL,
@@ -59,6 +174,7 @@ export function CarrosselSubs({ indexAtual, onChange }: CarrosselSubsProps) {
           })}
           renderItem={({ item, index }) => {
             const isActive = index === indexAtual;
+
             if (isActive) {
               return (
                 <LinearGradient
@@ -71,18 +187,39 @@ export function CarrosselSubs({ indexAtual, onChange }: CarrosselSubsProps) {
                 </LinearGradient>
               );
             }
+
             return (
-              <View style={styles.item}>
+              <TouchableOpacity
+                style={styles.item}
+                onPress={() => onChangeIndex(index)}
+                activeOpacity={0.7}
+              >
                 <Text style={styles.texto}>{item.title}</Text>
-              </View>
+              </TouchableOpacity>
             );
           }}
         />
 
-        <TouchableOpacity onPress={irParaProximo} style={styles.botao} activeOpacity={0.7}>
-          <MaterialCommunityIcons name="chevron-right" size={30} color="#FFF" />
+        <TouchableOpacity
+          onPress={irParaProximo}
+          style={styles.botao}
+          activeOpacity={0.7}
+          disabled={isNextDisabled}
+        >
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={24}
+            color={isNextDisabled ? '#2a2a2a' : '#FFF'}
+          />
         </TouchableOpacity>
       </View>
+
+      {/* ── DOTS ── */}
+      <DotIndicator
+        total={dadosAtuais.length}
+        current={indexAtual}
+        onPress={onChangeIndex}
+      />
     </View>
   );
 }
@@ -94,50 +231,84 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingBottom: 10,
   },
+
+  // ── TOGGLE ──
+  tipoSwitchContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 10,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    width: '100%',
+    marginBottom: 10,
+  },
+  tipoSwitchBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  tipoSwitchBtnAtivo: {
+    backgroundColor: colors.primary + '22',
+  },
+  tipoSwitchTxt: {
+    fontFamily: 'Creato-Bold',
+    color: colors.text_secondary,
+    fontSize: 12,
+    letterSpacing: 0.6,
+  },
+  tipoSwitchTxtAtivo: {
+    color: colors.primary,
+  },
+
+  // ── CARROSSEL ──
   internal: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1A1A1A',
     borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+    paddingVertical: 8,
+    paddingHorizontal: PADDING_H,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
   },
   botao: {
-    width: 40,
-    height: 40,
+    width: LARGURA_BOTAO,
+    height: 34,
     justifyContent: 'center',
     alignItems: 'center',
   },
   listContent: {
     alignItems: 'center',
-    paddingHorizontal: (LARGURA_DISPONIVEL - 40 * 2 - 10 * 2 - LARGURA_ITEM) / 2,
+    paddingHorizontal: PADDING_CENTRALIZADOR,
   },
   item: {
     width: LARGURA_ITEM,
-    height: 40,
+    height: 34,
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 5,
+    marginHorizontal: GAP_ITEM / 2,
   },
   itemAtivo: {
     width: LARGURA_ITEM,
-    height: 40,
+    height: 34,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 12,
-    marginHorizontal: 5,
+    borderRadius: 10,
+    marginHorizontal: GAP_ITEM / 2,
   },
   texto: {
     fontFamily: 'Creato-Bold',
-    color: '#666',
-    fontSize: 18,
-    textTransform: 'uppercase',
+    color: '#444',
+    fontSize: 14,
+    letterSpacing: 0.5,
   },
   textoAtivo: {
     fontFamily: 'Creato-Bold',
     color: '#FFF',
-    fontSize: 18,
-    textTransform: 'uppercase',
+    fontSize: 14,
     letterSpacing: 1,
   },
 });

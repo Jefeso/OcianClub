@@ -6,22 +6,23 @@ import { colors } from '@/src/theme/colors';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { fetchTimes, fetchCompeticoes, criarPartida } from '@/src/services/api';
+// Não se esqueça de importar o fetchCategorias!
+import { fetchTimes, fetchCompeticoes, fetchCategorias, criarPartida } from '@/src/services/api';
 
-const CATEGORIAS = [
-  { id: 1, nome: 'SUB 12' },
-  { id: 2, nome: 'SUB 14' },
-  { id: 3, nome: 'SUB 16' },
-  { id: 4, nome: 'SUB 18' },
-];
+const ORDEM_SUBS: Record<string, number> = {
+  'SUB 7': 1, 'SUB-7': 1, 'SUB 8': 2, 'SUB-8': 2, 'SUB 9': 3, 'SUB-9': 3,
+  'SUB 10': 4, 'SUB-10': 4, 'SUB 12': 5, 'SUB-12': 5, 'SUB 14': 6, 'SUB-14': 6,
+  'SUB 16': 7, 'SUB-16': 7, 'SUB 18': 8, 'SUB-18': 8,
+};
+
+interface Categoria { id: number; nome: string; tipo: 'INICIACAO' | 'BASE'; }
+interface Time { id: number; nome: string; escudo: string | null; categorias: Categoria[]; }
+interface Competicao { id: number; nome: string; ano: number; }
 
 interface OrganizarPartidasProps {
   onFechar: () => void;
   noModal?: boolean; 
 }
-
-interface Time { id: number; nome: string; escudo: string | null; }
-interface Competicao { id: number; nome: string; ano: number; }
 
 function EscudoTime({ escudo, nome, size = 40 }: { escudo: string | null; nome: string; size?: number }) {
   if (escudo) {
@@ -39,18 +40,23 @@ function EscudoTime({ escudo, nome, size = 40 }: { escudo: string | null; nome: 
 export default function OrganizarPartidas({ onFechar, noModal  }: OrganizarPartidasProps) {
   const router = useRouter();
 
+  // ── DADOS DO BANCO ──
+  const [times, setTimes] = useState<Time[]>([]);
   const [competicoes, setCompeticoes] = useState<Competicao[]>([]);
-  const [competicaoSelecionada, setCompeticaoSelecionada] = useState<Competicao | null>(null);
-  const [modalCompeticao, setModalCompeticao] = useState(false);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [carregandoDados, setCarregandoDados] = useState(true);
 
-  const [categoriaId, setCategoriaId] = useState(CATEGORIAS[0].id);
+  // ── ESTADOS DE UI E FILTROS ──
+  const [tipoFiltro, setTipoFiltro] = useState<'INICIACAO' | 'BASE'>('INICIACAO');
+  const [competicaoSelecionada, setCompeticaoSelecionada] = useState<Competicao | null>(null);
+  const [modalCompeticao, setModalCompeticao] = useState(false);
+  const [modalTime, setModalTime] = useState<'mandante' | 'visitante' | null>(null);
+  const [buscaTime, setBuscaTime] = useState('');
+
+  // ── FORMULÁRIO ──
+  const [categoriaId, setCategoriaId] = useState<number | null>(null);
   const [mandante, setMandante] = useState<Time | null>(null);
   const [visitante, setVisitante] = useState<Time | null>(null);
-  const [modalTime, setModalTime] = useState<'mandante' | 'visitante' | null>(null);
-  const [times, setTimes] = useState<Time[]>([]);
-  const [buscaTime, setBuscaTime] = useState('');
-  
   const [data, setData] = useState('');
   const [horario, setHorario] = useState('');
   const [local, setLocal] = useState('');
@@ -58,22 +64,43 @@ export default function OrganizarPartidas({ onFechar, noModal  }: OrganizarParti
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    // Carrega times e competições simultaneamente
-    Promise.all([fetchTimes(), fetchCompeticoes()])
-      .then(([timesData, competicoesData]) => {
+    Promise.all([fetchTimes(), fetchCompeticoes(), fetchCategorias()])
+      .then(([timesData, competicoesData, categoriasData]) => {
         setTimes(timesData);
         setCompeticoes(competicoesData);
-        if (competicoesData.length > 0) {
-          setCompeticaoSelecionada(competicoesData[0]);
-        }
+        
+        const catOrdenadas = categoriasData.sort((a: Categoria, b: Categoria) => 
+          (ORDEM_SUBS[a.nome.toUpperCase()] ?? 99) - (ORDEM_SUBS[b.nome.toUpperCase()] ?? 99)
+        );
+        setCategorias(catOrdenadas);
+        
+        if (competicoesData.length > 0) setCompeticaoSelecionada(competicoesData[0]);
+        
+        const primeiraIniciacao = catOrdenadas.find((c: Categoria) => c.tipo === 'INICIACAO');
+        if (primeiraIniciacao) setCategoriaId(primeiraIniciacao.id);
       })
       .catch(console.error)
       .finally(() => setCarregandoDados(false));
   }, []);
 
-  const timesFiltrados = times.filter(t =>
-    t.nome.toLowerCase().includes(buscaTime.toLowerCase())
-  );
+  const handleTipoFiltro = (tipo: 'INICIACAO' | 'BASE') => {
+    setTipoFiltro(tipo);
+    const primeiraDaFase = categorias.find(c => c.tipo === tipo);
+    if (primeiraDaFase) setCategoriaId(primeiraDaFase.id);
+    
+    // Limpa os times, pois se mudou de Iniciação pra Base, os times antigos não servem mais
+    setMandante(null);
+    setVisitante(null);
+  };
+
+  const categoriasFiltradas = categorias.filter(c => c.tipo === tipoFiltro);
+
+  // Filtra times pela busca E pela Categoria selecionada
+  const timesFiltrados = times.filter(t => {
+    const matchBusca = t.nome.toLowerCase().includes(buscaTime.toLowerCase());
+    const matchCategoria = t.categorias?.some(c => c.id === categoriaId);
+    return matchBusca && matchCategoria;
+  });
 
   const selecionarTime = (time: Time) => {
     if (modalTime === 'mandante') {
@@ -104,7 +131,7 @@ export default function OrganizarPartidas({ onFechar, noModal  }: OrganizarParti
   };
 
   const salvar = async () => {
-    if (!mandante || !visitante || data.length < 5 || horario.length < 5) return;
+    if (!mandante || !visitante || data.length < 5 || horario.length < 5 || !categoriaId) return;
     setSalvando(true);
     try {
       const [dia, mes] = data.split('/');
@@ -118,9 +145,9 @@ export default function OrganizarPartidas({ onFechar, noModal  }: OrganizarParti
         local,
         emCasa,
         categoria_id: categoriaId,
-        competicao_id: competicaoSelecionada?.id, // Envia o ID da competição
+        competicao_id: competicaoSelecionada?.id,
       });
-      onFechar()
+      onFechar();
     } catch (e) {
       console.error(e);
     } finally {
@@ -128,7 +155,7 @@ export default function OrganizarPartidas({ onFechar, noModal  }: OrganizarParti
     }
   };
 
-  const isFormValido = mandante && visitante && data.length === 5 && horario.length === 5;
+  const isFormValido = mandante && visitante && data.length === 5 && horario.length === 5 && categoriaId !== null;
 
   return (
     <View style={styles.container}>
@@ -154,14 +181,32 @@ export default function OrganizarPartidas({ onFechar, noModal  }: OrganizarParti
           <MaterialCommunityIcons name="chevron-down" size={20} color={colors.text_secondary} />
         </TouchableOpacity>
 
-        {/* ── CATEGORIA ── */}
+        {/* ── CATEGORIA (TOGGLE E PILLS) ── */}
         <Text style={styles.sectionLabel}>CATEGORIA</Text>
+        <View style={styles.tipoSwitchContainer}>
+          {(['INICIACAO', 'BASE'] as const).map(tipo => (
+            <TouchableOpacity 
+              key={tipo} 
+              style={[styles.tipoSwitchBtn, tipoFiltro === tipo && styles.tipoSwitchBtnAtivo]} 
+              onPress={() => handleTipoFiltro(tipo)}
+            >
+              <Text style={[styles.tipoSwitchTxt, tipoFiltro === tipo && styles.tipoSwitchTxtAtivo]}>
+                {tipo === 'INICIACAO' ? 'INICIAÇÃO' : 'BASE'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillRow}>
-          {CATEGORIAS.map((cat) => (
+          {categoriasFiltradas.map((cat) => (
             <TouchableOpacity
               key={cat.id}
               style={[styles.pill, categoriaId === cat.id && styles.pillActive]}
-              onPress={() => setCategoriaId(cat.id)}
+              onPress={() => {
+                setCategoriaId(cat.id);
+                setMandante(null);
+                setVisitante(null);
+              }}
               activeOpacity={0.8}
             >
               <Text style={[styles.pillText, categoriaId === cat.id && styles.pillTextActive]}>{cat.nome}</Text>
@@ -331,7 +376,7 @@ export default function OrganizarPartidas({ onFechar, noModal  }: OrganizarParti
                 <ActivityIndicator color={colors.primary} style={{ marginVertical: 20 }} />
               ) : timesFiltrados.length === 0 ? (
                 <Text style={{ fontFamily: 'Creato-Regular', color: colors.text_secondary, textAlign: 'center', paddingVertical: 20 }}>
-                  Nenhum time encontrado
+                  Nenhum time encontrado para este Sub.
                 </Text>
               ) : (
                 timesFiltrados.map((time) => {

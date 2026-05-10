@@ -12,7 +12,7 @@ export const styles = StyleSheet.create({
     paddingTop: 10,
   },
   
-  // --- FILTROS (DROPDOWN DE MÊS E PILLS DE CATEGORIA) ---
+  // --- FILTROS (DROPDOWN DE MÊS, TOGGLE E PILLS) ---
   filtersContainer: {
     marginBottom: 24,
   },
@@ -34,6 +34,34 @@ export const styles = StyleSheet.create({
     fontFamily: 'Creato-Bold',
     color: colors.text,
     fontSize: 16,
+  },
+  tipoSwitchContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 10,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    marginHorizontal: MARGEM_CONTEUDO,
+    marginBottom: 16,
+  },
+  tipoSwitchBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  tipoSwitchBtnAtivo: {
+    backgroundColor: colors.primary + '22',
+  },
+  tipoSwitchTxt: {
+    fontFamily: 'Creato-Bold',
+    color: colors.text_secondary,
+    fontSize: 12,
+    letterSpacing: 0.6,
+  },
+  tipoSwitchTxtAtivo: {
+    color: colors.primary,
   },
   pillRow: {
     paddingHorizontal: MARGEM_CONTEUDO,
@@ -77,8 +105,9 @@ export const styles = StyleSheet.create({
   },
   dateText: {
     fontFamily: 'Creato-Bold',
-    fontSize: 20,
+    fontSize: 16,
     color: colors.text,
+    letterSpacing: 0.8,
   },
 
   // --- CARDS DE PARTIDA ---
@@ -87,10 +116,6 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-  },
-  matchCardOcian: {
-    borderWidth: 1.5,
-    borderColor: colors.azulClaro,
   },
   cardTop: {
     flexDirection: 'row',
@@ -121,7 +146,7 @@ export const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.secondary, // Fundo azul escuro elegante para o badge
+    backgroundColor: colors.secondary, 
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 6,
@@ -148,7 +173,7 @@ export const styles = StyleSheet.create({
     width: 50,
     height: 50,
     resizeMode: 'contain',
-    backgroundColor: colors.background, // Fundo dark por trás da logo pra separar do cinza do card
+    backgroundColor: colors.background,
     borderRadius: 8,
   },
   teamName: {
@@ -168,7 +193,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderTopWidth: 1,
-    borderTopColor: colors.background, // Linha dark sutil separando o local
+    borderTopColor: colors.background,
     paddingTop: 12,
   },
   locationText: {
@@ -245,5 +270,38 @@ export const styles = StyleSheet.create({
   monthGridTextActive: {
     color: colors.text,
     fontFamily: 'Creato-Bold',
+  },
+
+  // --- CARROSSEL DE MESES ---
+  monthCarrosselContainer: {
+    paddingTop: 10,
+    paddingBottom: 5,
+  },
+  monthListContent: {
+    paddingHorizontal: MARGEM_CONTEUDO,
+    gap: 10,
+  },
+  monthPill: {
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  monthPillActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  monthPillText: {
+    fontFamily: 'Creato-Bold',
+    color: colors.text_secondary,
+    fontSize: 13,
+    letterSpacing: 0.5,
+  },
+  monthPillTextActive: {
+    color: '#FFF',
   },
 });
