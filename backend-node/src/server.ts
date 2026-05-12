@@ -91,17 +91,15 @@ app.delete('/usuarios/me', async (req, res) => {
 // 2. CADASTROS E BUSCAS
 
 app.post('/times', async (req, res) => {
-  const { nome, escudo, categorias_ids } = req.body;
+  const { nome, escudo, categoria_id } = req.body; 
   try {
     const time = await prisma.time.create({ 
       data: { 
         nome, 
         escudo,
-        categorias: categorias_ids ? {
-          connect: categorias_ids.map((id: number) => ({ id }))
-        } : undefined
+        categoria_id 
       },
-      include: { categorias: true }
+      include: { categoria: true } 
     });
     res.status(201).json(time);
   } catch (error) {
@@ -110,18 +108,16 @@ app.post('/times', async (req, res) => {
 });
 
 app.patch('/times/:id', async (req, res) => {
-  const { nome, escudo, categorias_ids } = req.body;
+  const { nome, escudo, categoria_id } = req.body;
   try {
     const time = await prisma.time.update({
       where: { id: Number(req.params.id) },
       data: { 
         nome, 
         escudo,
-        categorias: categorias_ids ? {
-          set: categorias_ids.map((id: number) => ({ id })) 
-        } : undefined
+        categoria_id
       },
-      include: { categorias: true }
+      include: { categoria: true } 
     });
     res.json(time);
   } catch (error) {
@@ -133,7 +129,7 @@ app.get('/times', async (req, res) => {
   try {
     const times = await prisma.time.findMany({ 
       orderBy: { nome: 'asc' },
-      include: { categorias: true } 
+      include: { categoria: true } 
     });
     res.json(times);
   } catch (error) {
@@ -314,12 +310,35 @@ app.get('/jogadores/perfis', async (req, res) => {
 });
 
 app.post('/competicoes', async (req, res) => {
-  const { nome, ano } = req.body;
+  const { nome, ano, tipo } = req.body; 
   try {
-    const competicao = await prisma.competicao.create({ data: { nome, ano } });
+    const competicao = await prisma.competicao.create({ 
+      data: { 
+        nome, 
+        ano,
+        tipo
+      } 
+    });
     res.status(201).json(competicao);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao criar competição' });
+  }
+});
+
+app.patch('/competicoes/:id', async (req, res) => {
+  const { nome, ano, tipo } = req.body;
+  try {
+    const competicao = await prisma.competicao.update({
+      where: { id: Number(req.params.id) },
+      data: { 
+        nome, 
+        ano, 
+        tipo 
+      },
+    });
+    res.json(competicao);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao atualizar competição' });
   }
 });
 
@@ -410,10 +429,17 @@ app.get('/jogadores/:id/estatisticas', async (req, res) => {
 
 app.post('/partidas/:id/eventos', async (req, res) => {
     const partidaId = parseInt(req.params.id);
-    const { jogador_id, time_id, tipo, minuto } = req.body;
+    // Removemos o time_id e recebemos o booleano doOcian
+    const { jogador_id, doOcian, tipo, minuto } = req.body; 
     try {
         const evento = await prisma.evento.create({
-            data: { partida_id: partidaId, jogador_id, time_id, tipo, minuto },
+            data: { 
+              partida_id: partidaId, 
+              jogador_id: jogador_id || null,
+              doOcian, 
+              tipo, 
+              minuto 
+            },
             include: { jogador: true }
         });
 
