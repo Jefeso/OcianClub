@@ -12,10 +12,11 @@ import {
   criarCompeticao, atualizarCompeticao, deletarCompeticao,
 } from '@/src/services/api';
 
-interface Categoria { id: number; nome: string; tipo: 'INICIACAO' | 'BASE'; }
-interface Time { id: number; nome: string; escudo: string | null; categorias: Categoria[]; }
+// ATUALIZAÇÃO DAS INTERFACES PARA O NOVO BANCO
+interface Categoria { id: number; nome: string; }
+interface Time { id: number; nome: string; escudo: string | null; categoria_id: number; }
 interface Partida { id: number; categoria_id: number | null; mandante: Time; visitante: Time; }
-interface Competicao { id: number; nome: string; ano: number; }
+interface Competicao { id: number; nome: string; ano: number; tipo: 'INICIACAO' | 'BASE'; }
 interface Jogador { id: number; nome: string; posicao: string; numCamisa: number | null; categoria_id: number; }
 interface EquipesProps { onFechar: () => void; noModal?: boolean; }
 
@@ -25,6 +26,12 @@ const ORDEM_SUBS: Record<string, number> = {
   'SUB 7': 1, 'SUB-7': 1, 'SUB 8': 2, 'SUB-8': 2, 'SUB 9': 3, 'SUB-9': 3,
   'SUB 10': 4, 'SUB-10': 4, 'SUB 12': 5, 'SUB-12': 5, 'SUB 14': 6, 'SUB-14': 6,
   'SUB 16': 7, 'SUB-16': 7, 'SUB 18': 8, 'SUB-18': 8,
+};
+
+// FUNÇÃO AUXILIAR PARA DIVIDIR AS CATEGORIAS COM SEGURANÇA
+const getTipoCategoria = (nome: string) => {
+  const iniciacao = ['SUB 7', 'SUB-7', 'SUB 8', 'SUB-8', 'SUB 9', 'SUB-9', 'SUB 10', 'SUB-10'];
+  return iniciacao.includes(nome.toUpperCase()) ? 'INICIACAO' : 'BASE';
 };
 
 function EmptyState({ icone, mensagem, onAction, labelAction }: any) {
@@ -59,7 +66,6 @@ export default function Equipes({ onFechar, noModal }: EquipesProps) {
   const [modalConfirmar, setModalConfirmar] = useState(false);
   const [modalElenco, setModalElenco] = useState(false);
   
-  // 🔥 CORREÇÃO DO TYPESCRIPT: Categoria adicionada aqui
   const [itemSelecionado, setItemSelecionado] = useState<Time | Competicao | Categoria | null>(null);
   
   const [salvando, setSalvando] = useState(false);
@@ -67,7 +73,10 @@ export default function Equipes({ onFechar, noModal }: EquipesProps) {
   const [anoForm, setAnoForm] = useState('');
   const [escudoUri, setEscudoUri] = useState<string | null>(null);
   const [escudoUrl, setEscudoUrl] = useState<string | null>(null);
-  const [categoriasForm, setCategoriasForm] = useState<number[]>([]);
+  
+  // Substitui o array de categorias por um único ID, e adiciona o tipo do Campeonato
+  const [categoriaFormId, setCategoriaFormId] = useState<number | null>(null);
+  const [tipoForm, setTipoForm] = useState<'INICIACAO' | 'BASE'>('INICIACAO');
 
   const carregarDados = useCallback(async () => {
     setCarregando(true);
@@ -88,14 +97,14 @@ export default function Equipes({ onFechar, noModal }: EquipesProps) {
 
   const isOcian = (nome: string) => nome.toUpperCase().includes(NOME_CLUBE);
   
-  const categoriasOcian = categorias.filter(c => c.tipo === tipoOcian);
+  // Usando a função auxiliar para não depender da coluna no banco
+  const categoriasOcian = categorias.filter(c => getTipoCategoria(c.nome) === tipoOcian);
   const competicoesFiltradas = competicoes.filter(c => c.nome.toLowerCase().includes(busca.toLowerCase()));
 
-  // A MÁGICA: Deduzir os adversários lendo as Partidas + Cadastros Manuais
+  // Deduzir os adversários lendo as Partidas + Cadastros Manuais
   const getAdversariosPorSub = (catId: number) => {
     const mapaTimes = new Map<number, Time>();
 
-    // 1. Pega os adversários dos jogos que o script do seu parceiro subiu
     partidas.forEach(p => {
       if (p.categoria_id === catId) {
         if (p.mandante && !isOcian(p.mandante.nome)) mapaTimes.set(p.mandante.id, p.mandante);
@@ -103,9 +112,9 @@ export default function Equipes({ onFechar, noModal }: EquipesProps) {
       }
     });
 
-    // 2. Pega os times que você cadastrar manualmente no app
+    // Lógica para pegar time pela categoria única (categoria_id)
     times.forEach(t => {
-      if (!isOcian(t.nome) && t.categorias?.some(c => c.id === catId)) {
+      if (!isOcian(t.nome) && t.categoria_id === catId) {
         mapaTimes.set(t.id, t);
       }
     });
@@ -113,18 +122,28 @@ export default function Equipes({ onFechar, noModal }: EquipesProps) {
     return Array.from(mapaTimes.values());
   };
 
-  // Funções de CRUD
   const abrirFormNovo = () => {
-    setItemSelecionado(null); setNomeForm(''); setAnoForm(String(new Date().getFullYear()));
-    setEscudoUri(null); setEscudoUrl(null); setCategoriasForm(subSelecionadoId ? [subSelecionadoId] : []); setModalForm(true);
+    setItemSelecionado(null); 
+    setNomeForm(''); 
+    setAnoForm(String(new Date().getFullYear()));
+    setEscudoUri(null); 
+    setEscudoUrl(null); 
+    setCategoriaFormId(subSelecionadoId || null); 
+    setTipoForm('INICIACAO');
+    setModalForm(true);
   };
 
   const abrirFormEdicao = (item: Time | Competicao) => {
-    setItemSelecionado(item); setNomeForm(item.nome);
-    if ('ano' in item) setAnoForm(String(item.ano));
+    setItemSelecionado(item); 
+    setNomeForm(item.nome);
+    if ('ano' in item) {
+        setAnoForm(String(item.ano));
+        setTipoForm(item.tipo || 'INICIACAO');
+    }
     if ('escudo' in item) { 
-      setEscudoUrl(item.escudo); setEscudoUri(null); 
-      setCategoriasForm(('categorias' in item) ? item.categorias?.map((c: Categoria) => c.id) || [] : []); 
+      setEscudoUrl(item.escudo); 
+      setEscudoUri(null); 
+      setCategoriaFormId(item.categoria_id || null);
     }
     setModalForm(true);
   };
@@ -134,23 +153,21 @@ export default function Equipes({ onFechar, noModal }: EquipesProps) {
     if (!result.canceled) setEscudoUri(result.assets[0].uri);
   };
 
-  const toggleCategoriaForm = (id: number) => {
-    if (categoriasForm.includes(id)) setCategoriasForm(categoriasForm.filter(catId => catId !== id));
-    else setCategoriasForm([...categoriasForm, id]);
-  };
-
   const salvar = async () => {
     if (!nomeForm.trim()) return Alert.alert('Atenção', 'O nome não pode ser vazio.');
-    if (abaAtiva === 'adversarios' && categoriasForm.length === 0) return Alert.alert('Atenção', 'Selecione pelo menos um Sub.');
 
     setSalvando(true);
     try {
       if (abaAtiva === 'adversarios') {
-        const dados = { nome: nomeForm, escudo: escudoUrl ?? undefined, categorias_ids: categoriasForm };
+        if (!categoriaFormId) {
+            setSalvando(false);
+            return Alert.alert('Atenção', 'Selecione o Sub a qual este time pertence.');
+        }
+        const dados = { nome: nomeForm, escudo: escudoUrl ?? undefined, categoria_id: categoriaFormId };
         if (itemSelecionado && 'escudo' in itemSelecionado) await atualizarTime(itemSelecionado.id, dados); 
         else await criarTime(dados);
       } else {
-        const dados = { nome: nomeForm, ano: Number(anoForm) || new Date().getFullYear() };
+        const dados = { nome: nomeForm, ano: Number(anoForm) || new Date().getFullYear(), tipo: tipoForm };
         if (itemSelecionado && 'ano' in itemSelecionado) await atualizarCompeticao(itemSelecionado.id, dados); 
         else await criarCompeticao(dados);
       }
@@ -170,7 +187,6 @@ export default function Equipes({ onFechar, noModal }: EquipesProps) {
     }
   };
 
-  // ── RENDERIZAÇÃO CFA OCIAN (SÓ OS CARDS DOS SUBS) ──
   const renderCFAOcian = () => (
     <View>
       <View style={styles.tipoSwitchContainer}>
@@ -182,7 +198,6 @@ export default function Equipes({ onFechar, noModal }: EquipesProps) {
       </View>
       <View style={styles.gridCategorias}>
         {categoriasOcian.map(cat => (
-          // 🔥 CORREÇÃO AQUI: removido setCategoriaSelecionada(cat)
           <TouchableOpacity key={cat.id} style={styles.cardCategoriaOcian} onPress={() => { setItemSelecionado(cat); setModalElenco(true); }}>
             <View style={styles.iconCircleOcian}><MaterialCommunityIcons name="shield-star" size={32} color={colors.primary} /></View>
             <Text style={styles.catOcianNome}>{cat.nome}</Text>
@@ -193,7 +208,6 @@ export default function Equipes({ onFechar, noModal }: EquipesProps) {
     </View>
   );
 
-  // ── RENDERIZAÇÃO ADVERSÁRIOS (SÓ CARDS SUBS -> CLICOU -> LISTA TIME DO SUB) ──
   const renderAdversarios = () => {
     if (subSelecionadoId !== null) {
       const adversariosDesseSub = getAdversariosPorSub(subSelecionadoId).filter(t => t.nome.toLowerCase().includes(busca.toLowerCase()));
@@ -289,7 +303,7 @@ export default function Equipes({ onFechar, noModal }: EquipesProps) {
                       <View style={styles.escudoPlaceholder}><MaterialCommunityIcons name="trophy-outline" size={20} color={colors.azulClaro} /></View>
                       <View style={{ flexShrink: 1 }}>
                       <Text style={styles.cardNome} numberOfLines={2}>{comp.nome}</Text>
-                      <Text style={styles.cardSub}>{comp.ano}</Text>
+                      <Text style={styles.cardSub}>{comp.ano} • {comp.tipo}</Text>
                     </View>
                     </View>
                     <View style={styles.cardAcoes}>
@@ -305,7 +319,6 @@ export default function Equipes({ onFechar, noModal }: EquipesProps) {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* FAB SÓ APARECE EM ADVERSÁRIOS (Se tiver um Sub aberto) E CAMPEONATOS */}
       {abaAtiva !== 'ocian' && (abaAtiva === 'campeonatos' || (abaAtiva === 'adversarios' && subSelecionadoId !== null)) && (
         <TouchableOpacity style={styles.fab} onPress={abrirFormNovo} activeOpacity={0.8}>
           <MaterialCommunityIcons name="plus" size={30} color="#FFF" />
@@ -355,13 +368,27 @@ export default function Equipes({ onFechar, noModal }: EquipesProps) {
                     <><MaterialCommunityIcons name="camera-plus-outline" size={28} color={colors.text_secondary} /><Text style={styles.escudoPickerTxt}>Adicionar escudo</Text></>
                   )}
                 </TouchableOpacity>
-                <Text style={styles.modalSubtitulo}>Selecione as categorias:</Text>
+                <Text style={styles.modalSubtitulo}>Selecione a categoria do adversário:</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                   {categorias.map(cat => (
-                    <TouchableOpacity key={cat.id} style={[styles.pill, categoriasForm.includes(cat.id) && styles.pillActive]} onPress={() => toggleCategoriaForm(cat.id)}>
-                      <Text style={[styles.pillText, categoriasForm.includes(cat.id) && styles.pillTextActive]}>{cat.nome}</Text>
+                    <TouchableOpacity key={cat.id} style={[styles.pill, categoriaFormId === cat.id && styles.pillActive]} onPress={() => setCategoriaFormId(cat.id)}>
+                      <Text style={[styles.pillText, categoriaFormId === cat.id && styles.pillTextActive]}>{cat.nome}</Text>
                     </TouchableOpacity>
                   ))}
+                </View>
+              </>
+            )}
+
+            {abaAtiva === 'campeonatos' && (
+              <>
+                <Text style={styles.modalSubtitulo}>Tipo do Torneio:</Text>
+                <View style={[styles.tipoSwitchContainer, { marginBottom: 16 }]}>
+                    <TouchableOpacity style={[styles.tipoSwitchBtn, tipoForm === 'INICIACAO' && styles.tipoSwitchBtnAtivo]} onPress={() => setTipoForm('INICIACAO')}>
+                        <Text style={[styles.tipoSwitchTxt, tipoForm === 'INICIACAO' && styles.tipoSwitchTxtAtivo]}>INICIAÇÃO</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.tipoSwitchBtn, tipoForm === 'BASE' && styles.tipoSwitchBtnAtivo]} onPress={() => setTipoForm('BASE')}>
+                        <Text style={[styles.tipoSwitchTxt, tipoForm === 'BASE' && styles.tipoSwitchTxtAtivo]}>BASE</Text>
+                    </TouchableOpacity>
                 </View>
               </>
             )}

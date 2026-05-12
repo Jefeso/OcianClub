@@ -16,7 +16,7 @@ const ORDEM_SUBS: Record<string, number> = {
 };
 
 interface Categoria { id: number; nome: string; tipo: 'INICIACAO' | 'BASE'; }
-interface Time { id: number; nome: string; escudo: string | null; categorias: Categoria[]; }
+interface Time { id: number; nome: string; escudo: string | null; categoria_id: number; }
 interface Competicao { id: number; nome: string; ano: number; }
 
 interface OrganizarPartidasProps {
@@ -98,10 +98,10 @@ export default function OrganizarPartidas({ onFechar, noModal  }: OrganizarParti
   // Filtra times pela busca E pela Categoria selecionada
   const timesFiltrados = times.filter(t => {
     const matchBusca = t.nome.toLowerCase().includes(buscaTime.toLowerCase());
-    const matchCategoria = t.categorias?.some(c => c.id === categoriaId);
+    const matchCategoria = t.categoria_id === categoriaId; 
+    
     return matchBusca && matchCategoria;
   });
-
   const selecionarTime = (time: Time) => {
     if (modalTime === 'mandante') {
       setMandante(mandante?.id === time.id ? null : time);
