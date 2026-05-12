@@ -88,9 +88,7 @@ app.delete('/usuarios/me', async (req, res) => {
   }
 });
 
-// ==========================================
 // 2. CADASTROS E BUSCAS
-// ==========================================
 
 app.post('/times', async (req, res) => {
   const { nome, escudo, categorias_ids } = req.body;
@@ -301,7 +299,7 @@ app.get('/jogadores/perfis', async (req, res) => {
         jogos_disputados: jogos,
         gols:             stats['GOL']             || 0,
         assistencias:     stats['ASSISTENCIA']     || 0,
-        defesas:          stats['DEFESA']          || 0, // <-- ATUALIZADO AQUI: Substituiu DESARME
+        defesas:          stats['DEFESA']          || 0,
         cartoes_amarelos: stats['CARTAO_AMARELO']  || 0,
         cartoes_vermelhos:stats['CARTAO_VERMELHO'] || 0,
         faltas_cometidas: stats['FALTA']           || 0,
