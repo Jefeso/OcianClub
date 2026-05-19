@@ -94,7 +94,7 @@ export const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  // ── PILLS (BOTÕES PARA SELECIONAR SUBS NO FORMULÁRIO) ──
+  // ── PILLS (BOTÕES PARA SELECIONAR SUBS) ──
   pill: {
     backgroundColor: '#1A1A1A',
     paddingVertical: 8,
@@ -282,7 +282,7 @@ export const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  // ── MODAIS (CRIAR, EXCLUIR, ELENCO) ──
+  // ── MODAIS GENÉRICOS ──
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.75)',
@@ -346,12 +346,61 @@ export const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  // ── LISTA DE JOGADORES (ELENCO OCIAN) ──
-  cardJogador: {
+  // ── WIZARD DE CAMPEONATO (UI NOVA) ──
+  wizardProgress: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  wizardDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#333',
+  },
+  wizardDotActive: {
+    backgroundColor: colors.primary,
+    width: 24,
+  },
+  wizardOptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#222',
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#333',
+    gap: 16,
+  },
+  wizardOptionIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: '#333',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wizardOptionTitle: {
+    fontFamily: 'Creato-Bold',
+    color: colors.text,
+    fontSize: 16,
+  },
+  wizardOptionSub: {
+    fontFamily: 'Creato-Regular',
+    color: colors.text_secondary,
+    fontSize: 12,
+    marginTop: 4,
+    lineHeight: 16,
+  },
+
+  // ── LISTA DE JOGADORES (ELENCO E CHECKBOX) ──
+  cardJogadorModal: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#222',
     padding: 12,
+    marginBottom: 8,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#333',

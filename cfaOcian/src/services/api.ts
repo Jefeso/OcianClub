@@ -6,6 +6,22 @@ async function getToken() {
   return await SecureStore.getItemAsync('userToken');
 }
 
+export async function fetchJogadoresPorCompeticao(comp_id: number): Promise<any[]> {
+  const res = await fetch(`${BASE_URL}/competicoes/${comp_id}/jogadores`);
+  if (!res.ok) throw new Error('Erro ao buscar elenco do campeonato');
+  return res.json();
+}
+
+// Substitui o elenco de uma competição por completo (idempotente).
+export async function salvarElencoCompeticao(comp_id: number, jogador_ids: number[]): Promise<void> {
+  const res = await fetch(`${BASE_URL}/competicoes/${comp_id}/jogadores`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jogador_ids }),
+  });
+  if (!res.ok) throw new Error('Erro ao salvar elenco da competição');
+}
+
 export async function fetchJogadoresPerfis(categoria_id?: number): Promise<any[]> {
   const query = categoria_id ? `?categoria_id=${categoria_id}` : '';
   const res = await fetch(`${BASE_URL}/jogadores/perfis${query}`);
