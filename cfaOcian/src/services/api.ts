@@ -70,8 +70,6 @@ export async function deletarTime(id: number) {
   return res.json();
 }
 
-
-
 export async function fetchJogadores() {
   const res = await fetch(`${BASE_URL}/jogadores`);
   if (!res.ok) throw new Error('Erro ao buscar jogadores');
@@ -98,7 +96,6 @@ export async function atualizarJogador(id: number, dados: any) {
     body: JSON.stringify(dados),
   });
   if (!res.ok) {
-    // Tenta ler o erro em JSON. Se for HTML, devolve vazio e cai no throw genérico
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error || 'Erro ao atualizar jogador');
   }
@@ -116,7 +113,6 @@ export async function deletarJogador(id: number) {
 
 export async function fetchPerfilJogador(id: number): Promise<any> {
   const res = await fetch(`${BASE_URL}/jogadores/perfis?categoria_id=0`);
-  // Busca perfis e filtra pelo id — reutiliza endpoint existente
   if (!res.ok) throw new Error('Erro ao buscar perfil');
   const todos = await res.json();
   return todos.find((j: any) => j.id_jogador === id) ?? null;
@@ -151,6 +147,24 @@ export async function deletarCompeticao(id: number) {
   return res.json();
 }
 
+export async function fetchPartidasPorCompeticao(competicao_id: number, categoria_id?: number) {
+  const query = new URLSearchParams({ competicao_id: String(competicao_id) });
+  if (categoria_id) query.append('categoria_id', String(categoria_id));
+  const res = await fetch(`${BASE_URL}/partidas?${query}`);
+  if (!res.ok) throw new Error('Erro ao buscar partidas da competição');
+  return res.json();
+}
+
+export async function atualizarStatusPartida(id: number, status: string) {
+  const res = await fetch(`${BASE_URL}/partidas/${id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error('Erro ao atualizar status');
+  return res.json();
+}
+
 export async function fetchCompeticoes() {
   const res = await fetch(`${BASE_URL}/competicoes`);
   if (!res.ok) throw new Error('Erro ao buscar competicoes');
@@ -181,6 +195,8 @@ export async function criarPartida(dados: {
   emCasa: boolean;
   categoria_id: number;
   competicao_id?: number;
+  rodada? : number;
+  grupo?: string;
 }) {
   const res = await fetch(`${BASE_URL}/partidas`, {
     method: 'POST',
@@ -188,6 +204,20 @@ export async function criarPartida(dados: {
     body: JSON.stringify(dados),
   });
   if (!res.ok) throw new Error('Erro ao criar partida');
+  return res.json();
+}
+
+export async function atualizarPartida(id: number, dados: {
+  mandante_id?: number; visitante_id?: number; data?: string;
+  horario?: string; local?: string; emCasa?: boolean;
+  rodada?: number; grupo?: string; categoria_id?: number;
+}) {
+  const res = await fetch(`${BASE_URL}/partidas/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dados),
+  });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Erro ao atualizar partida'); }
   return res.json();
 }
 

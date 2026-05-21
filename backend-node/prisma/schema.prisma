@@ -152,8 +152,10 @@ model Partida {
 
 enum StatusPartida {
   AGENDADA
+  PREPARADA
   AO_VIVO
   FINALIZADA
+  CANCELADA
 }
 
 // ── EVENTOS (Scout / IA) ──────────────────────────────────

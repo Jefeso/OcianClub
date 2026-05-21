@@ -6,6 +6,7 @@ import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcrypt';
 import axios from 'axios';
+import importacaoRoutes from './router/importacao.routes';
 
 const app = express();
 const server = http.createServer(app);
@@ -14,6 +15,9 @@ const prisma = new PrismaClient();
 
 app.use(cors());
 app.use(express.json());
+
+// Rota conectando a IA de Leitura de Tabelas!
+app.use('/partidas/importar', importacaoRoutes);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'segredo_super_seguro_ocian';
 const PYTHON_AI_URL = process.env.PYTHON_AI_URL || 'http://localhost:8000';
@@ -91,11 +95,7 @@ app.post('/times', async (req, res) => {
   const { nome, escudo, categoria_id } = req.body; 
   try {
     const time = await prisma.time.create({ 
-      data: { 
-        nome, 
-        escudo,
-        categoria_id: Number(categoria_id) 
-      },
+      data: { nome, escudo, categoria_id: Number(categoria_id) },
       include: { categoria: true } 
     });
     res.status(201).json(time);
@@ -109,11 +109,7 @@ app.patch('/times/:id', async (req, res) => {
   try {
     const time = await prisma.time.update({
       where: { id: Number(req.params.id) },
-      data: { 
-        nome, 
-        escudo,
-        categoria_id: Number(categoria_id)
-      },
+      data: { nome, escudo, categoria_id: Number(categoria_id) },
       include: { categoria: true } 
     });
     res.json(time);
@@ -147,11 +143,7 @@ app.post('/competicoes', async (req, res) => {
   const { nome, ano, tipo } = req.body; 
   try {
     const competicao = await prisma.competicao.create({ 
-      data: { 
-        nome, 
-        ano: Number(ano),
-        tipo
-      } 
+      data: { nome, ano: Number(ano), tipo } 
     });
     res.status(201).json(competicao);
   } catch (error: any) {
@@ -164,11 +156,7 @@ app.patch('/competicoes/:id', async (req, res) => {
   try {
     const competicao = await prisma.competicao.update({
       where: { id: Number(req.params.id) },
-      data: { 
-        nome, 
-        ano: Number(ano), 
-        tipo 
-      },
+      data: { nome, ano: Number(ano), tipo },
     });
     res.json(competicao);
   } catch (error: any) {
@@ -185,6 +173,32 @@ app.get('/competicoes', async (req, res) => {
   }
 });
 
+app.delete('/competicoes/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    // Bloqueia se houver partidas vinculadas
+    const totalPartidas = await prisma.partida.count({
+      where: { competicao_id: id }
+    });
+
+    if (totalPartidas > 0) {
+      return res.status(409).json({
+        error: `Não é possível excluir: este campeonato possui ${totalPartidas} partida(s) vinculada(s). Exclua as partidas primeiro.`
+      });
+    }
+
+    // Limpa elenco e times inscritos antes de deletar
+    await prisma.competicaoJogador.deleteMany({ where: { competicao_id: id } });
+    await prisma.competicaoTime.deleteMany({ where: { competicao_id: id } });
+    await prisma.competicao.delete({ where: { id } });
+
+    res.json({ mensagem: 'Campeonato excluído com sucesso.' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Erro ao excluir campeonato.' });
+  }
+});
+
+// LISTA OS JOGADORES INSCRITOS NO CAMPEONATO
 app.get('/competicoes/:id/jogadores', async (req, res) => {
   try {
     const inscricoes = await prisma.competicaoJogador.findMany({
@@ -195,49 +209,72 @@ app.get('/competicoes/:id/jogadores', async (req, res) => {
   } catch (error: any) { res.status(500).json({ error: 'Erro ao buscar elenco' }); }
 });
 
-app.post('/partidas', async (req, res) => {
-  const { mandante_id, visitante_id, data, horario, rodada, categoria_id, competicao_id } = req.body;
+// SALVA O ELENCO NO CAMPEONATO (Faltava isso!)
+app.put('/competicoes/:id/jogadores', async (req, res) => {
+  const competicao_id = Number(req.params.id);
+  const { jogador_ids }: { jogador_ids: number[] } = req.body;
+  if (!Array.isArray(jogador_ids)) {
+    return res.status(400).json({ error: 'jogador_ids deve ser um array' });
+  }
   try {
-    const partida = await prisma.partida.create({
-      data: {
-        mandante_id: Number(mandante_id), visitante_id: Number(visitante_id),
-        data: new Date(`${data}T00:00:00Z`), horario, rodada: rodada ? Number(rodada) : null,
-        categoria_id: Number(categoria_id), competicao_id: competicao_id ? Number(competicao_id) : null
-      }
-    });
-    res.status(201).json(partida);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+    await prisma.competicaoJogador.deleteMany({ where: { competicao_id } });
+    if (jogador_ids.length > 0) {
+      await prisma.competicaoJogador.createMany({
+        data: jogador_ids.map(jogador_id => ({ competicao_id, jogador_id })),
+        skipDuplicates: true,
+      });
+    }
+    res.json({ ok: true, total: jogador_ids.length });
+  } catch (error: any) {
+    console.error('Erro ao salvar elenco:', error.message || error);
+    res.status(500).json({ error: 'Erro ao salvar elenco da competição' });
+  }
 });
 
-// A TRAVA DE SÊNIOR NO PERFIL DO JOGADOR AQUI
+app.get('/categorias', async (req, res) => {
+  try {
+    const categorias = await prisma.categoria.findMany({ orderBy: { nome: 'asc' } });
+    res.json(categorias);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Erro ao buscar categorias' });
+  }
+});
+
+// A TRAVA DE SÊNIOR NO PERFIL DO JOGADOR AQUI (Restaurada!)
 app.post('/jogadores', async (req, res) => {
   const { nome, cpf, dtNasc, posicao, numCamisa } = req.body;
+  if (!nome || !cpf || !dtNasc) return res.status(400).json({ error: 'Nome, CPF e data de nascimento obrigatórios' });
+
   try {
+    const cpfExistente = await prisma.jogador.findUnique({ where: { cpf} });
+    if (cpfExistente) return res.status(409).json({ error: 'Este CPF já está cadastrado' });
+
     const anoNasc = new Date(dtNasc).getFullYear();
     const idade = new Date().getFullYear() - anoNasc;
+
     const regrasCategorias = [
-      {limite: 7, nome: "sub-7"}, {limite: 8, nome: "sub-8"},
-      {limite: 9, nome: "sub-9"}, {limite: 10, nome: "sub-10"},
-      {limite: 12, nome: "sub-12"}, {limite: 14, nome: "sub-14"},
+      {limite: 7, nome: "sub-7"}, {limite: 8, nome: "sub-8"}, {limite: 9, nome: "sub-9"},
+      {limite: 10, nome: "sub-10"}, {limite: 12, nome: "sub-12"}, {limite: 14, nome: "sub-14"},
       {limite: 16, nome: "sub-16"}, {limite: 18, nome: "sub-18"},
     ];
+
     const categoriaAdequada = regrasCategorias.find(r => idade <= r.limite);
     if (!categoriaAdequada) {
         return res.status(403).json({ error: 'Idade fora das categorias permitidas.' });
     }
-    console.log(`Debug: Jogador ${nome} tem ${idade} anos. Regra encontrada: ${categoriaAdequada.nome}`);
 
     const categoria = await prisma.categoria.findFirst({
-      where: {
-        nome: {
-          equals: categoriaAdequada.nome,
-          mode: 'insensitive'
-        }
-      }
+      where: { nome: { equals: categoriaAdequada.nome, mode: 'insensitive' } }
     });
     if (!categoria) {
-      console.log(`Erro crítico: Não encontrei no banco a categoria com nome "${categoriaAdequada.nome}"`);
       return res.status(404).json({ error: `Categoria ${categoriaAdequada.nome} não encontrada no banco.` });
+    }
+
+    if (numCamisa){
+      const camisaEmUso = await prisma.jogador.findFirst({
+        where: { categoria_id: categoria.id, numCamisa: Number(numCamisa) }
+      });
+      if (camisaEmUso) return res.status(409).json({ error: `A camisa ${numCamisa} já está sendo usada na categoria.` });
     }
 
     const jogador = await prisma.jogador.create({
@@ -252,11 +289,7 @@ app.get('/jogadores/perfis', async (req, res) => {
   try {
     const jogadores = await prisma.jogador.findMany({
       where: categoria_id ? { categoria_id: Number(categoria_id) } : undefined,
-      include: {
-        eventos: true,
-        categoria: true,
-        escalacoes: true 
-      },
+      include: { eventos: true, categoria: true, escalacoes: true },
       orderBy: { nota_geral: 'desc' },
     });
 
@@ -265,7 +298,6 @@ app.get('/jogadores/perfis', async (req, res) => {
         acc[ev.tipo] = (acc[ev.tipo] || 0) + 1;
         return acc;
       }, {});
-
       const jogos = j.escalacoes ? j.escalacoes.length : 0;
 
       return {
@@ -274,7 +306,7 @@ app.get('/jogadores/perfis', async (req, res) => {
         posicao:          j.posicao,
         numCamisa:        j.numCamisa,
         dtNasc:           j.dtNasc,
-        perfil_ml:        j.perfil_ml || 'Sem dados', // Fallback garantido
+        perfil_ml:        j.perfil_ml || 'Sem dados',
         scores_ml:        j.scores_ml,
         nota_geral:       j.nota_geral ?? 0,
         categoria:        j.categoria.nome,
@@ -290,7 +322,6 @@ app.get('/jogadores/perfis', async (req, res) => {
         faltas_cometidas: stats['FALTA']           || 0,
       };
     });
-
     res.json(formatados);
   } catch (error: any) {
     console.error(error);
@@ -305,7 +336,7 @@ app.get('/jogadores', async (req, res) => {
     } catch (error: any) { res.status(500).json({ error: 'Erro ao buscar jogadores' }); }
 });
 
-// ATUALIZAR JOGADOR (Recalcula o Sub automaticamente)
+// ATUALIZAR JOGADOR
 app.patch('/jogadores/:id', async (req, res) => {
   const { nome, dtNasc, posicao, numCamisa } = req.body;
   try {
@@ -332,30 +363,12 @@ app.patch('/jogadores/:id', async (req, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/jogadores/:id', async (req, res) => {
-  try { await prisma.jogador.delete({ where: { id: Number(req.params.id) } }); res.json({ msg: 'Excluído' }); }
-  catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
 // EXCLUIR JOGADOR
 app.delete('/jogadores/:id', async (req, res) => {
-  try {
-    await prisma.jogador.delete({
-      where: { id: Number(req.params.id) }
-    });
-    res.json({ mensagem: 'Jogador excluído com sucesso' });
-  } catch (error: any) {
-    res.status(500).json({ error: 'Erro ao excluir jogador' });
-  }
-});
-
-app.get('/categorias', async (req, res) => {
-  try {
-    const categorias = await prisma.categoria.findMany({ orderBy: { nome: 'asc' } });
-    res.json(categorias);
-  } catch (error: any) {
-    res.status(500).json({ error: 'Erro ao buscar categorias' });
-  }
+  try { 
+    await prisma.jogador.delete({ where: { id: Number(req.params.id) } }); 
+    res.json({ mensagem: 'Excluído com sucesso' }); 
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 // ── ROTA DE PARTIDAS ──
@@ -367,7 +380,6 @@ app.post('/partidas', async (req, res) => {
     const catId = Number(categoria_id);
     const compId = competicao_id ? Number(competicao_id) : null;
 
-    // 🛑 TRAVA 1: Regra da Rodada
     if (rodada && compId) {
         const rodadaDuplicada = await prisma.partida.findFirst({
             where: { competicao_id: compId, categoria_id: catId, rodada: Number(rodada) }
@@ -377,7 +389,6 @@ app.post('/partidas', async (req, res) => {
         }
     }
 
-    // 🛑 TRAVA 2: Regra do Choque de Horário
     if (horario) {
         const choqueHorario = await prisma.partida.findFirst({
             where: { categoria_id: catId, data: dataFormatada, horario }
@@ -387,20 +398,11 @@ app.post('/partidas', async (req, res) => {
         }
     }
 
-    // 🟢 TUDO CERTO, PODE SALVAR
     const partida = await prisma.partida.create({
       data: {
-        mandante_id: Number(mandante_id),
-        visitante_id: Number(visitante_id),
-        data: dataFormatada,
-        horario,
-        local,
-        emCasa: emCasa !== undefined ? emCasa : true,
-        categoria_id: catId,
-        competicao_id: compId,
-        rodada: rodada ? Number(rodada) : null,
-        grupo,
-        status: 'AGENDADA',
+        mandante_id: Number(mandante_id), visitante_id: Number(visitante_id),
+        data: dataFormatada, horario, local, emCasa: emCasa !== undefined ? emCasa : true,
+        categoria_id: catId, competicao_id: compId, rodada: rodada ? Number(rodada) : null, grupo, status: 'AGENDADA',
       },
       include: { mandante: true, visitante: true, categoria: true, competicao: true },
     });
@@ -413,11 +415,12 @@ app.post('/partidas', async (req, res) => {
 });
 
 app.get('/partidas', async (req, res) => {
-  const { categoria_id, mes, status } = req.query;
+  const { categoria_id, mes, status, competicao_id } = req.query;
   try {
     const where: any = {};
     if (categoria_id) where.categoria_id = Number(categoria_id);
     if (status) where.status = status;
+    if (competicao_id) where.competicao_id = Number(competicao_id);
     if (mes) {
       const ano = new Date().getFullYear();
       where.data = {
@@ -465,8 +468,7 @@ app.post('/partidas/:id/eventos', async (req, res) => {
               partida_id: partidaId, 
               jogador_id: jogador_id ? Number(jogador_id) : null,
               doOcian: doOcian !== undefined ? doOcian : true, 
-              tipo, 
-              minuto: Number(minuto)
+              tipo, minuto: Number(minuto)
             },
             include: { jogador: true }
         });
@@ -484,15 +486,34 @@ app.post('/partidas/:id/eventos', async (req, res) => {
     }
 });
 
+app.patch('/partidas/:id', async (req, res) => {
+  const { mandante_id, visitante_id, data, horario, local, emCasa, rodada, grupo, categoria_id } = req.body;
+  try {
+    const partida = await prisma.partida.update({
+      where: { id: Number(req.params.id) },
+      data: {
+        mandante_id: mandante_id ? Number(mandante_id) : undefined,
+        visitante_id: visitante_id ? Number(visitante_id) : undefined,
+        data: data ? new Date(`${data}T00:00:00Z`) : undefined,
+        horario, local, emCasa,
+        rodada: rodada ? Number(rodada) : undefined,
+        grupo: grupo ?? null,
+        categoria_id: categoria_id ? Number(categoria_id) : undefined,
+      },
+      include: { mandante: true, visitante: true, categoria: true },
+    });
+    res.json(partida);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.patch('/partidas/:id/placar', async (req, res) => {
   const { gols_mandante, gols_visitante } = req.body;
   try {
     const partida = await prisma.partida.update({
       where: { id: Number(req.params.id) },
-      data: { 
-        gols_mandante: Number(gols_mandante), 
-        gols_visitante: Number(gols_visitante) 
-      },
+      data: { gols_mandante: Number(gols_mandante), gols_visitante: Number(gols_visitante) },
     });
     io.emit('placar_atualizado', partida);
     res.json(partida);
@@ -524,10 +545,7 @@ app.patch('/partidas/:id/status', async (req, res) => {
 
 async function processarMachineLearning() {
   const jogadores = await prisma.jogador.findMany({
-    include: { 
-      eventos: true,
-      escalacoes: true 
-    }
+    include: { eventos: true, escalacoes: true }
   });
 
   const payload = jogadores
